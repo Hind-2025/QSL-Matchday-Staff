@@ -266,6 +266,10 @@ button,select,input{font-family:'Cairo',sans-serif}
 </div>
 
 <div id="v-stf" class="panel">
+  <div class="crd" style="margin-bottom:14px">
+    <div class="crdhdr"><div class="crdtitle">الاقسام</div><button class="btn bp bsm no-print" onclick="oAddDept()">+ قسم جديد</button></div>
+    <div id="dept-mgr" style="display:flex;flex-wrap:wrap;gap:8px;padding:4px 0"></div>
+  </div>
   <div class="crd">
     <div class="crdhdr">
       <div class="crdtitle">👥 إدارة العاملين</div>
@@ -314,10 +318,11 @@ button,select,input{font-family:'Cairo',sans-serif}
   </div>
 </div>
 
+<div class="ov" id="m-dept" style="display:none" onclick="if(event.target===this)cMd('dept')"><div class="md"><h3 id="dmt">قسم جديد</h3><div id="msg-dept"></div><div class="fr"><div class="fl"><label>مفتاح القسم</label><input id="dept-k" placeholder="مثال: المصورون"></div></div><div class="fr"><div class="fl"><label>اسم العرض</label><input id="dept-l" placeholder="مثال: قسم التصوير"></div></div><div class="mbs"><button class="btn bdel bsm" id="bdel-dept" onclick="delDept()" style="display:none;margin-left:auto">حذف</button><button class="btn" onclick="cMd('dept')">الغاء</button><button class="btn bp" onclick="saveDept()">حفظ</button></div></div></div>
 <div id="toast" style="position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--navy);color:var(--gold);padding:12px 22px;border-radius:12px;font-size:14px;font-weight:700;z-index:1000;transition:transform .3s;box-shadow:0 6px 24px rgba(0,0,0,.3);pointer-events:none"></div>
 
 <script>
-const DEPTS=[
+let DEPTS=[
   {k:'مشرفين جامعي الكرات',l:'مشرفو جامعي الكرات',bg:'#FFF3CD',tc:'#7B4F00'},
   {k:'مشرفين الاستاد',l:'مشرفو الاستاد',bg:'#E8F5E9',tc:'#1B5E20'},
   {k:'المذيعين',l:'المذيعون',bg:'#E3F2FD',tc:'#1565C0'},
@@ -325,7 +330,9 @@ const DEPTS=[
   {k:'المنسقين',l:'المنسقون',bg:'#EDE7F6',tc:'#4527A0'},
   {k:'المراقبين',l:'مراقبو المباريات',bg:'#ECEFF1',tc:'#37474F'},
 ];
-const DM=Object.fromEntries(DEPTS.map(d=>[d.k,d]));
+const CLRS=[{bg:'#FFF3CD',tc:'#7B4F00'},{bg:'#E8F5E9',tc:'#1B5E20'},{bg:'#E3F2FD',tc:'#1565C0'},{bg:'#FCE4EC',tc:'#880E4F'},{bg:'#EDE7F6',tc:'#4527A0'},{bg:'#ECEFF1',tc:'#37474F'},{bg:'#FBE9E7',tc:'#BF360C'},{bg:'#E0F7FA',tc:'#006064'},{bg:'#F3E5F5',tc:'#6A1B9A'},{bg:'#FFF8E1',tc:'#F57F17'}];
+let DM=Object.fromEntries(DEPTS.map(d=>[d.k,d]));
+function refreshDM(){DM=Object.fromEntries(DEPTS.map(d=>[d.k,d]));}
 // Default competitions — each has: id, name, color(rl/rq/rr/r4..), rounds[]
 const DEF_COMPS=[
   {id:'league', name:'دوري', color:'m',  rounds:[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,'الفاصلة']},
@@ -431,6 +438,19 @@ let staff=JSON.parse(JSON.stringify(IS));
 let seasons=[{id:'s26',name:'2025-2026',records:bR(),comps:JSON.parse(JSON.stringify(DEF_COMPS))}];
 let cSID='s26',cComp='league',cRnd=1,cView='grid';
 let DF={g:'',s:'',r:'',t:''};
+let deptOverride={};  // deptOverride[pid][roundKey] = deptKey
+function getDeptOverride(pid){
+  var key=rKey(cComp,cRnd);
+  if(deptOverride[pid]&&deptOverride[pid][key])return deptOverride[pid][key];
+  var p=staff.find(function(x){return x.id===pid;});
+  return p?p.dept:'';
+}
+function setDeptOverride(pid,deptKey){
+  var key=rKey(cComp,cRnd);
+  if(!deptOverride[pid])deptOverride[pid]={};
+  deptOverride[pid][key]=deptKey;
+  schedSave();
+}
 let ePID=null,svT=null;
 const SB_URL='https://acrnsczerbefmvqfxjhh.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFjcm5zY3plcmJlZm12cWZ4amhoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcxODk2MzEsImV4cCI6MjA5Mjc2NTYzMX0.hfpsRAlLUHSDITSepcLMsYBWhYu35gJQGsaiDCRZYh0';
@@ -450,6 +470,8 @@ async function cloudLoad(){
       if(d.staff)staff=d.staff;
       if(d.seasons){seasons=d.seasons;seasons.forEach(function(s){if(!s.comps)s.comps=JSON.parse(JSON.stringify(DEF_COMPS));});}
       if(d.cSID&&seasons.find(function(s){return s.id===d.cSID;}))cSID=d.cSID;
+      if(d.deptOverride)deptOverride=d.deptOverride;
+      if(d.depts&&d.depts.length){DEPTS=d.depts;refreshDM();}
       window._sbRowId=rows[0].id;
     }
     setSY('ok','متزامن مع الفريق');
@@ -461,7 +483,7 @@ async function cloudLoad(){
 async function cloudSave(){
   setSY('s','جاري الحفظ...');
   try{
-    var payload=JSON.stringify({staff,seasons,cSID});
+    var payload=JSON.stringify({staff,seasons,cSID,deptOverride,depts:DEPTS});
     var r;
     if(window._sbRowId){
       r=await fetch(SB_URL+'/rest/v1/'+SB_TABLE+'?id=eq.'+window._sbRowId,{
@@ -611,12 +633,27 @@ function rGrid(){
         <div class="cnum${v?' '+C.vc:''}" id="cv-${p.id}">${v||0}</div>
         <button class="cbtn" onclick="setV('${p.id}',1)">+</button>
       </div></div>
-      <div class="stot${tot?'':' z'}" id="tot-${p.id}">${tot||0}</div>
+            <div style="text-align:center">
+        <div class="stot${tot?'':' z'}" id="tot-${p.id}">${tot||0}</div>
+        <div id="dov-${p.id}"></div>
+      </div>
       <div class="sph">${p.phone||'—'}</div>
     </div>`;
   });
   if(!fl.length)html+='<div class="empty">لا توجد نتائج</div>';
   document.getElementById('stbl').innerHTML=html;
+  // populate dept override selects
+  staff.forEach(function(p){
+    var el=document.getElementById('dov-'+p.id);
+    if(!el)return;
+    var v=cs()&&cs().records&&cs().records[p.id]&&cs().records[p.id][rKey(cComp,cRnd)]||0;
+    if(!v){el.innerHTML='';return;}
+    var cur=getDeptOverride(p.id);
+    var opts=DEPTS.map(function(d){
+      return '<option value="'+d.k+'"'+(cur===d.k?' selected':'')+'>'+d.l+'</option>';
+    }).join('');
+    el.innerHTML='<select onchange="setDeptOverride(\''+p.id+'\',this.value)" style="font-size:10px;border:1px solid #E0D8D0;border-radius:5px;padding:1px 4px;color:#6B0F2A;max-width:95px;background:#fff;margin-top:3px">'+opts+'</select>';
+  });
   rSBar();
 }
 
@@ -772,7 +809,7 @@ function delComp(compId){
 }
 
 function rStf(){
-  bDB('dbar-t','t','rStf');
+  rDeptMgr();bDB('dbar-t','t','rStf');
   const df=DF.t,fl=df?staff.filter(p=>p.dept===df):staff;
   document.getElementById('scards').innerHTML=`<div class="scgrid">${fl.map(p=>{
     const d=DM[p.dept],c=career(p.id),cur=pTot(p.id);
@@ -834,7 +871,33 @@ function sMg(el,t,tx){const e=document.getElementById(el);if(e)e.innerHTML=`<div
 let _tt;
 function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.style.transform='translateX(-50%) translateY(0)';clearTimeout(_tt);_tt=setTimeout(()=>el.style.transform='translateX(-50%) translateY(80px)',2800);}
 
-function rebuildAll(){bSel();bRNav();rRHdr();rGrid();if(cView==='sum')rSum();if(cView==='rec')rRec();if(cView==='rnds')rRndMgr();if(cView==='stf')rStf();}
+function rDeptMgr(){
+  var el=document.getElementById('dept-mgr');if(!el)return;
+  el.innerHTML=DEPTS.map(function(d){
+    return '<div style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;background:'+d.bg+';border:1.5px solid '+d.tc+'50;margin:3px">'
+      +'<span style="font-size:13px;font-weight:700;color:'+d.tc+'">'+d.l+'</span>'
+      +'<button onclick="oEditDept(''+d.k+'')" style="border:none;background:none;cursor:pointer;font-size:11px;color:'+d.tc+'">تعديل</button>'
+      +'<button onclick="delDeptConfirm(''+d.k+'')" style="border:none;background:none;cursor:pointer;font-size:13px;color:#A32020">X</button>'
+      +'</div>';
+  }).join('');
+  // refresh dept select in person modal
+  var sel=document.getElementById('apd');
+  if(sel)sel.innerHTML=DEPTS.map(function(d){return '<option value="'+d.k+'">'+d.l+'</option>';}).join('');
+}
+var eDK=null;
+function oAddDept(){eDK=null;document.getElementById('dmt').textContent='قسم جديد';document.getElementById('dept-k').value='';document.getElementById('dept-l').value='';document.getElementById('bdel-dept').style.display='none';document.getElementById('msg-dept').innerHTML='';oMd('dept');}
+function oEditDept(k){var d=DEPTS.find(function(x){return x.k===k;});if(!d)return;eDK=k;document.getElementById('dmt').textContent='تعديل القسم';document.getElementById('dept-k').value=d.k;document.getElementById('dept-l').value=d.l;document.getElementById('bdel-dept').style.display='inline-flex';document.getElementById('msg-dept').innerHTML='';oMd('dept');}
+function saveDept(){
+  var k=document.getElementById('dept-k').value.trim();
+  var l=document.getElementById('dept-l').value.trim();
+  if(!k||!l){document.getElementById('msg-dept').innerHTML='<div class="msgtxt mer">ادخل الاسمين</div>';return;}
+  if(eDK){var d=DEPTS.find(function(x){return x.k===eDK;});if(d){var ok=d.k;d.k=k;d.l=l;staff.forEach(function(p){if(p.dept===ok)p.dept=k;});}}
+  else{if(DEPTS.find(function(x){return x.k===k;})){document.getElementById('msg-dept').innerHTML='<div class="msgtxt mer">القسم موجود</div>';return;}var c=CLRS[DEPTS.length%CLRS.length];DEPTS.push({k:k,l:l,bg:c.bg,tc:c.tc});}
+  refreshDM();cMd('dept');rDeptMgr();if(cView==='stf')rStf();schedSave();toast('تم حفظ القسم');
+}
+function delDeptConfirm(k){var d=DEPTS.find(function(x){return x.k===k;});if(!d||!confirm('حذف قسم '+d.l+'؟'))return;DEPTS=DEPTS.filter(function(x){return x.k!==k;});refreshDM();rDeptMgr();if(cView==='stf')rStf();schedSave();toast('تم حذف القسم');}
+function delDept(){if(eDK)delDeptConfirm(eDK);cMd('dept');}
+function rebuildAll(){rDeptMgr();bSel();bRNav();rRHdr();rGrid();if(cView==='sum')rSum();if(cView==='rec')rRec();if(cView==='rnds')rRndMgr();if(cView==='stf')rStf();}
 
 (async()=>{const ok=await cloudLoad();rebuildAll();if(!ok)await cloudSave();else toast('✅ تم التحميل من السحابة');})();
 </script>
