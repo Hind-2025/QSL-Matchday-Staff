@@ -652,7 +652,7 @@ function rGrid(){
     var opts=DEPTS.map(function(d){
       return '<option value="'+d.k+'"'+(cur===d.k?' selected':'')+'>'+d.l+'</option>';
     }).join('');
-    el.innerHTML='<select onchange="setDeptOverride(\''+p.id+'\',this.value)" style="font-size:10px;border:1px solid #E0D8D0;border-radius:5px;padding:1px 4px;color:#6B0F2A;max-width:95px;background:#fff;margin-top:3px">'+opts+'</select>';
+    el.innerHTML=`<select onchange="setDeptOverride('${p.id}',this.value)" style="font-size:10px;border:1px solid #E0D8D0;border-radius:5px;padding:1px 4px;color:#6B0F2A;max-width:95px;background:#fff;margin-top:3px">${opts}</select>`;
   });
   rSBar();
 }
@@ -874,16 +874,12 @@ function toast(msg){const el=document.getElementById('toast');el.textContent=msg
 function rDeptMgr(){
   var el=document.getElementById('dept-mgr');if(!el)return;
   el.innerHTML=DEPTS.map(function(d){
-    return '<div style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;background:'+d.bg+';border:1.5px solid '+d.tc+'50;margin:3px">'
-      +'<span style="font-size:13px;font-weight:700;color:'+d.tc+'">'+d.l+'</span>'
-      +'<button onclick="oEditDept(''+d.k+'')" style="border:none;background:none;cursor:pointer;font-size:11px;color:'+d.tc+'">تعديل</button>'
-      +'<button onclick="delDeptConfirm(''+d.k+'')" style="border:none;background:none;cursor:pointer;font-size:13px;color:#A32020">X</button>'
-      +'</div>';
+    return `<div style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;background:${d.bg};border:1.5px solid ${d.tc}50;margin:3px"><span style="font-size:13px;font-weight:700;color:${d.tc}">${d.l}</span><button onclick="oEditDept('${d.k}')" style="border:none;background:none;cursor:pointer;font-size:11px;color:${d.tc}">تعديل</button><button onclick="delDeptConfirm('${d.k}')" style="border:none;background:none;cursor:pointer;font-size:13px;color:#A32020">X</button></div>`;
   }).join('');
-  // refresh dept select in person modal
   var sel=document.getElementById('apd');
-  if(sel)sel.innerHTML=DEPTS.map(function(d){return '<option value="'+d.k+'">'+d.l+'</option>';}).join('');
+  if(sel)sel.innerHTML=DEPTS.map(function(d){return `<option value="${d.k}">${d.l}</option>`;}).join('');
 }
+
 var eDK=null;
 function oAddDept(){eDK=null;document.getElementById('dmt').textContent='قسم جديد';document.getElementById('dept-k').value='';document.getElementById('dept-l').value='';document.getElementById('bdel-dept').style.display='none';document.getElementById('msg-dept').innerHTML='';oMd('dept');}
 function oEditDept(k){var d=DEPTS.find(function(x){return x.k===k;});if(!d)return;eDK=k;document.getElementById('dmt').textContent='تعديل القسم';document.getElementById('dept-k').value=d.k;document.getElementById('dept-l').value=d.l;document.getElementById('bdel-dept').style.display='inline-flex';document.getElementById('msg-dept').innerHTML='';oMd('dept');}
