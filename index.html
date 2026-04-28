@@ -45,6 +45,9 @@ button,select,input{font-family:'Cairo',sans-serif}
 .rb:hover{background:var(--bg);color:var(--text)}
 .rb.al{background:var(--m);color:#fff}.rb.aq{background:var(--navy);color:var(--gold)}.rb.ar{background:var(--teal);color:#fff}.rb.a4{background:#5B2D8E;color:#fff}.rb.a5{background:#C0621A;color:#fff}
 .rb.hd::after{content:'•';position:absolute;top:0;right:2px;font-size:14px;color:var(--gold);line-height:1}
+
+
+
 .main{max-width:1280px;margin:0 auto;padding:18px 16px}
 .panel{display:none}.panel.on{display:block}
 .rhdr{background:var(--card);border-radius:14px;border:1px solid var(--border);padding:16px 20px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;box-shadow:var(--sh)}
@@ -336,9 +339,21 @@ function refreshDM(){DM=Object.fromEntries(DEPTS.map(d=>[d.k,d]));}
 // Default competitions — each has: id, name, color(rl/rq/rr/r4..), rounds[]
 const DEF_COMPS=[
   {id:'league', name:'دوري', color:'m',  rounds:[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,'الفاصلة']},
-  {id:'qsl',    name:'كأس QSL',               color:'navy',rounds:['R1','R2','R3','R4','R5','R6','R7','R8','R9','R10','QF','SF','F']},
+  {id:'qsl',    name:'كأس QSL',               color:'navy',rounds:['R1','R2','R3','R4','R5','R6','R7','R8','R9','R10','PO','QF','SF','F']},
   {id:'qatar',  name:'كأس قطر',               color:'teal',rounds:['SF1','SF2','F']},
 ];
+
+// Expected match count per round
+const MATCH_COUNTS={
+  league:{default:6},  // 6 matches per league week, each dept needs 6
+  qsl:{R1:10,R2:10,R3:10,R4:10,R5:10,R6:10,R7:10,R8:10,R9:10,R10:10,PO:6,QF:4,SF:2,F:1},
+  qatar:{SF1:1,SF2:1,F:1}
+};
+function getExpectedMatches(compId,r){
+  var c=MATCH_COUNTS[compId];if(!c)return null;
+  return c[r]!==undefined?c[r]:c.default;
+}
+
 function rKey(compId,r){return compId+'__'+r}
 function getComps(){return cs()?.comps||JSON.parse(JSON.stringify(DEF_COMPS))}
 function getComp(id){return getComps().find(c=>c.id===id)}
@@ -354,12 +369,12 @@ const IS=[
   {id:'p05',name:'إسماعيل',dept:'مشرفين جامعي الكرات',phone:'',email:'',notes:''},
   {id:'p06',name:'الطيب محمد',dept:'مشرفين جامعي الكرات',phone:'',email:'',notes:''},
   {id:'p07',name:'حسام',dept:'مشرفين جامعي الكرات',phone:'',email:'',notes:''},
-  {id:'p08',name:'عاطف سلامة',dept:'مشرفين الاستاد',phone:'50300071',email:'atef@qfa.qa',notes:''},
+  {id:'p08',name:'عاطف سلامة',dept:'مشرفين الاستاد',phone:'',email:'',notes:''},
   {id:'p09',name:'محمد نبيل',dept:'مشرفين الاستاد',phone:'',email:'',notes:''},
-  {id:'p10',name:'صابر فراج',dept:'مشرفين الاستاد',phone:'55234779',email:'sfarrag@qfa.qa',notes:''},
+  {id:'p10',name:'صابر فراج',dept:'مشرفين الاستاد',phone:'',email:'',notes:''},
   {id:'p11',name:'حسن مختار',dept:'مشرفين الاستاد',phone:'',email:'',notes:''},
   {id:'p12',name:'أسامة زباده',dept:'المذيعين',phone:'33467633',email:'ozabadi@qfa.qa',notes:''},
-  {id:'p13',name:'اسمهان الرفاعي',dept:'المذيعين',phone:'55105961',email:'asmahan2moh@yahoo.com',notes:''},
+  {id:'p13',name:'اسمهان الرفاعي',dept:'المذيعين',phone:'55105961',email:'Asmahan2moh@yahoo.com',notes:''},
   {id:'p14',name:'أمجد أسامة',dept:'المذيعين',phone:'33170809',email:'Cloudy_eg@hotmail.com',notes:''},
   {id:'p15',name:'بسمة متولي',dept:'المذيعين',phone:'33816904',email:'basmam@olympic.qa',notes:''},
   {id:'p16',name:'ريم ويري',dept:'المذيعين',phone:'55073973',email:'Rim_ouiri@live.com',notes:''},
@@ -374,65 +389,170 @@ const IS=[
   {id:'p25',name:'عبدالله الامام',dept:'المذيعين',phone:'33775123',email:'presenteralimam@gmail.com',notes:''},
   {id:'p26',name:'أحمد عطية',dept:'المذيعين',phone:'66474124',email:'aatiia@qfa.qa',notes:''},
   {id:'p27',name:'نبراس فتحي',dept:'المذيعين',phone:'55959449',email:'',notes:''},
-  {id:'p28',name:'جاسم م ب',dept:'السكرتارية',phone:'66079805',email:'jassimmp@qfa.qa',notes:'استلم'},
-  {id:'p29',name:'عاطف سلامة',dept:'السكرتارية',phone:'50300071',email:'atef@qfa.qa',notes:'استلم'},
-  {id:'p30',name:'عثمان عبد الله',dept:'السكرتارية',phone:'55252380',email:'bahlab78@gmail.com',notes:''},
-  {id:'p31',name:'محمد سالم سيناد',dept:'السكرتارية',phone:'55336072',email:'msosenad@gmail.com',notes:'استلم'},
-  {id:'p32',name:'محمد عبد الكريم أدم',dept:'السكرتارية',phone:'55428396',email:'MAbdulkareem@qfa.qa',notes:''},
-  {id:'p33',name:'محمد عبد الهادي',dept:'السكرتارية',phone:'55773562',email:'mabdulhadi@qfa.qa',notes:''},
-  {id:'p34',name:'محمد عويس',dept:'السكرتارية',phone:'66428213',email:'mowise@qfa.qa',notes:'استلم'},
-  {id:'p35',name:'محمود عباس',dept:'السكرتارية',phone:'66304794',email:'mabbas@qfa.qa',notes:'استلم'},
-  {id:'p36',name:'مصطفى احمد',dept:'السكرتارية',phone:'55503158',email:'mahmed@qfa.com.qa',notes:'استلم'},
-  {id:'p37',name:'مصطفى حسين',dept:'السكرتارية',phone:'70161917',email:'mhfahami@qfa.qa',notes:'استلم'},
-  {id:'p38',name:'نور شيثيك',dept:'السكرتارية',phone:'55361341',email:'noor@qfa.qa',notes:'استلم'},
-  {id:'p39',name:'محمد الحسن',dept:'السكرتارية',phone:'30090049',email:'malibrahim@qfa.qa',notes:'استلم'},
-  {id:'p40',name:'زياد الشمري',dept:'السكرتارية',phone:'66778754',email:'z.alshemmarey@qfa.qa',notes:'استلم'},
-  {id:'p41',name:'صابر فراج',dept:'السكرتارية',phone:'55234779',email:'sfarrag@qfa.qa',notes:'استلم'},
-  {id:'p42',name:'كريم',dept:'السكرتارية',phone:'50630576',email:'kabdelhamid@qfa.qa',notes:'استلم'},
-  {id:'p43',name:'معاذ الهادي',dept:'السكرتارية',phone:'33222678',email:'muaaz_elhadi@hotmail.com',notes:'استلم'},
-  {id:'p44',name:'Asif',dept:'السكرتارية',phone:'55846213',email:'pasif@qsl.com.qa',notes:'استلم'},
-  {id:'p45',name:'أحمد الحميدي',dept:'المنسقين',phone:'55828800',email:'aalhumaidi@qsl.com.qa',notes:''},
-  {id:'p46',name:'أحمد الرميحي',dept:'المنسقين',phone:'30178813',email:'alrumaihi@qfa.com.qa',notes:''},
-  {id:'p47',name:'جاسم التميمي',dept:'المنسقين',phone:'55856222',email:'jaltamimi@qsl.com.qa',notes:''},
-  {id:'p48',name:'حسن الأنصاري',dept:'المنسقين',phone:'55808062',email:'halansari@qsl.com.qa',notes:''},
-  {id:'p49',name:'حسين الشرشيني',dept:'المنسقين',phone:'50001513',email:'halsharshani@qfa.qa',notes:''},
-  {id:'p50',name:'خالد محمد الكواري',dept:'المنسقين',phone:'66666836',email:'',notes:''},
-  {id:'p51',name:'عبد الله الأنصاري',dept:'المنسقين',phone:'33337737',email:'',notes:''},
-  {id:'p52',name:'عبد الله الشمري',dept:'المنسقين',phone:'55826677',email:'aalshammari@qsl.com.qa',notes:''},
-  {id:'p53',name:'فهد راشد',dept:'المنسقين',phone:'66616556',email:'fahadrashed@qfa.qa',notes:''},
-  {id:'p54',name:'سالم العدساني',dept:'المنسقين',phone:'55877606',email:'saladsani@qsl.com.qa',notes:''},
-  {id:'p55',name:'هادي المري',dept:'المنسقين',phone:'55566965',email:'halmarri@qsl.com.qa',notes:''},
-  {id:'p56',name:'احمد نفوه',dept:'المنسقين',phone:'55122255',email:'ahmednafwa@gmail.com',notes:''},
-  {id:'p57',name:'صالح جابر ظرمان المري',dept:'المنسقين',phone:'55110085',email:'mr_dharman@hotmail.com',notes:''},
-  {id:'p58',name:'حامد الاحبابي',dept:'المنسقين',phone:'55648745',email:'hamed-qatar@outlook.com',notes:''},
-  {id:'p59',name:'احمد العجي',dept:'المنسقين',phone:'55550992',email:'cib99@hotmail.com',notes:''},
-  {id:'p60',name:'احمد السعدي',dept:'المنسقين',phone:'55299995',email:'abn.qtr82@gmail.com',notes:''},
-  {id:'p61',name:'سلطان الخاطر',dept:'المنسقين',phone:'33700006',email:'Sbmalk98@gmail.com',notes:''},
-  {id:'p62',name:'محمد الزيارة',dept:'المنسقين',phone:'55815814',email:'malzeyara@qsl.com.qa',notes:''},
-  {id:'p63',name:'عبدالعزيز البوعينين',dept:'المنسقين',phone:'55688865',email:'a9.buainain@gmail.com',notes:''},
-  {id:'p64',name:'سعيد راشد عفيفه',dept:'المنسقين',phone:'55097776',email:'Saeed2022afifa@gmail.com',notes:''},
-  {id:'p65',name:'أحمد العدساني',dept:'المراقبين',phone:'55889088',email:'aaladsani@qsl.com.qa',notes:''},
-  {id:'p66',name:'أحمد السيد',dept:'المراقبين',phone:'55858504',email:'aalsayed@qsl.com.qa',notes:''},
-  {id:'p67',name:'عبدالله الأنصاري',dept:'المراقبين',phone:'33337737',email:'aaalansari@qsl.com.qa',notes:''},
-  {id:'p68',name:'خالد الكواري',dept:'المراقبين',phone:'66666836',email:'kmalkuwari@qsl.com.qa',notes:''},
-  {id:'p69',name:'ماكسات',dept:'المراقبين',phone:'33204019',email:'maksatg@qsl.com.qa',notes:''},
-  {id:'p70',name:'ميجيل',dept:'المراقبين',phone:'55073004',email:'mheitor@qsl.com.qa',notes:''},
-  {id:'p71',name:'ابراهيم شاهين',dept:'المراقبين',phone:'55557739',email:'ibrahims@qfa.qa',notes:''},
-  {id:'p72',name:'علي حمود النعيمي',dept:'المراقبين',phone:'55068222',email:'aalnaimi@qfa.qa',notes:''},
-  {id:'p73',name:'محمد الرياشي',dept:'المراقبين',phone:'55886133',email:'Dohat2006@gmail.com',notes:''},
-  {id:'p74',name:'أحمد الحميدي',dept:'المراقبين',phone:'55828800',email:'aalhumaidi@qsl.com.qa',notes:''},
-  {id:'p75',name:'سالم العدساني',dept:'المراقبين',phone:'55877606',email:'saladsani@qsl.com.qa',notes:''},
-  {id:'p76',name:'جاسم التميمي',dept:'المراقبين',phone:'66222207',email:'jaltamimi@qsl.com.qa',notes:''},
-  {id:'p77',name:'حسن الانصاري',dept:'المراقبين',phone:'55808062',email:'halansari@qsl.com.qa',notes:''},
-  {id:'p78',name:'هادي المري',dept:'المراقبين',phone:'55566965',email:'halmarri@qsl.com.qa',notes:''},
-  {id:'p79',name:'حسين الشرشيني',dept:'المراقبين',phone:'50001513',email:'halsharshani@qfa.qa',notes:''},
-  {id:'p80',name:'راشد الدوسري',dept:'المراقبين',phone:'55533997',email:'rich1806@yahoo.com',notes:''},
-  {id:'p81',name:'علي شير',dept:'المراقبين',phone:'33055825',email:'',notes:''},
-  {id:'p82',name:'خالد الكبيسي',dept:'المراقبين',phone:'55555647',email:'k-647@hotmail.com',notes:''},
+  {id:'p28',name:'اسمهان الرفاعي',dept:'المذيعين',phone:'5510 5961',email:'asmahan2moh@yahoo.com',notes:''},
+  {id:'p29',name:'ريم ويري',dept:'المذيعين',phone:'55073973',email:'',notes:''},
+  {id:'p30',name:'خولة فتاحي',dept:'المذيعين',phone:'33355317',email:'kfetahi-fl@qsl.com.qa',notes:'4217'},
+  {id:'p31',name:'أحمد عطية',dept:'السكرتارية',phone:'66474124',email:'aatiia@qfa.qa',notes:''},
+  {id:'p32',name:'جاسم م ب',dept:'السكرتارية',phone:'66079805',email:'jassimmp@qfa.qa',notes:''},
+  {id:'p33',name:'عاطف سلامة',dept:'السكرتارية',phone:'50300071',email:'atef@qfa.qa',notes:''},
+  {id:'p34',name:'عثمان عبد الله',dept:'السكرتارية',phone:'55252380',email:'bahlab78@gmail.com',notes:''},
+  {id:'p35',name:'محمد سالم سيناد',dept:'السكرتارية',phone:'55336072',email:'msosenad@gmail.com',notes:''},
+  {id:'p36',name:'محمد محي',dept:'السكرتارية',phone:'77652658',email:'',notes:''},
+  {id:'p37',name:'محمد عبد الهادي عبدالحميد',dept:'السكرتارية',phone:'55773562',email:'mabdulhadi@qfa.qa',notes:''},
+  {id:'p38',name:'محمد عويس',dept:'السكرتارية',phone:'66428213',email:'mowise@qfa.qa',notes:''},
+  {id:'p39',name:'محمود عباس',dept:'السكرتارية',phone:'66304794',email:'mabbas@qfa.qa',notes:''},
+  {id:'p40',name:'مصطفى احمد',dept:'السكرتارية',phone:'55503158',email:'mahmed@qfa.com.qa',notes:''},
+  {id:'p41',name:'مصطفى حسين',dept:'السكرتارية',phone:'70161917',email:'mhfahami@qfa.qa',notes:''},
+  {id:'p42',name:'نور شيثيك',dept:'السكرتارية',phone:'55361341',email:'noor@qfa.qa',notes:''},
+  {id:'p43',name:'محمد الحسن',dept:'السكرتارية',phone:'30090049',email:'malibrahim@qfa.qa',notes:''},
+  {id:'p44',name:'زياد الشمري',dept:'السكرتارية',phone:'66778754',email:'z.alshemmarey@qfa.qa',notes:''},
+  {id:'p45',name:'صابر فراج',dept:'السكرتارية',phone:'55234779',email:'sfarrag@qfa.qa',notes:''},
+  {id:'p46',name:'كريم',dept:'السكرتارية',phone:'50630576',email:'kabdelhamid@qfa.qa',notes:''},
+  {id:'p47',name:'معاذ الهادي',dept:'السكرتارية',phone:'33222678',email:'muaaz_elhadi@hotmail.com',notes:''},
+  {id:'p48',name:'Asif',dept:'السكرتارية',phone:'55846213',email:'pasif@qsl.com.qa',notes:''},
+  {id:'p49',name:'أحمد الحميدي',dept:'المنسقين',phone:'55828800',email:'aalhumaidi@qsl.com.qa',notes:''},
+  {id:'p50',name:'أحمد الرميحي',dept:'المنسقين',phone:'30178813',email:'alrumaihi@qfa.com.qa',notes:''},
+  {id:'p51',name:'جاسم التميمي',dept:'المنسقين',phone:'55856222 -66222207',email:'jaltamimi@qsl.com.qa',notes:''},
+  {id:'p52',name:'حسن الأنصاري',dept:'المنسقين',phone:'55808062',email:'halansari@qsl.com.qa',notes:''},
+  {id:'p53',name:'حسين الشرشيني',dept:'المنسقين',phone:'50001513',email:'halsharshani@qfa.qa',notes:''},
+  {id:'p54',name:'خالد محمد الكواري',dept:'المنسقين',phone:'66666836',email:'',notes:''},
+  {id:'p55',name:'عبد الله الأنصاري',dept:'المنسقين',phone:'33337737',email:'',notes:''},
+  {id:'p56',name:'عبد الله الشمري',dept:'المنسقين',phone:'55826677',email:'aalshammari@qsl.com.qa',notes:''},
+  {id:'p57',name:'عبد الله العنزي',dept:'المنسقين',phone:'33334371',email:'asraalali@hotmail.com',notes:''},
+  {id:'p58',name:'محمد الرياشي',dept:'المنسقين',phone:'55840062',email:'hamadalyafei79@gmail.com',notes:''},
+  {id:'p59',name:'عبد الله جاسم آل إسحاق',dept:'المنسقين',phone:'55003090',email:'aaleshaq@qsl.com.qa',notes:''},
+  {id:'p60',name:'علي أمين',dept:'المنسقين',phone:'55855755',email:'aamin@qsl.com.qa',notes:'اعتذر عن اخذ المباريات '},
+  {id:'p61',name:'فرج المري',dept:'المنسقين',phone:'66866811/33666356',email:'falmarri@qsl.com.qa',notes:''},
+  {id:'p62',name:'فهد راشد',dept:'المنسقين',phone:'66616556',email:'fahadrashed@qfa.qa',notes:''},
+  {id:'p63',name:'محمد البلوشي',dept:'المنسقين',phone:'55880088',email:'malboloushi@qsl.com.qa',notes:''},
+  {id:'p64',name:'سالم العدساني',dept:'المنسقين',phone:'55877606',email:'saladsani@qsl.com.qa',notes:''},
+  {id:'p65',name:'ناصر الفضالة',dept:'المنسقين',phone:'55511789',email:'nalfadhala@qsl.com.qa',notes:''},
+  {id:'p66',name:'هادي المري',dept:'المنسقين',phone:'55566965',email:'halmarri@qsl.com.qa',notes:''},
+  {id:'p67',name:'علي حسن الصالات',dept:'المنسقين',phone:'33393377',email:'asalat@qfa.com.qa',notes:''},
+  {id:'p68',name:'حمد عبدالعزيز اليافعي',dept:'المنسقين',phone:'55840062',email:'hamadalyafei79@gmail.com',notes:''},
+  {id:'p69',name:'صالح جابر ظرمان المري',dept:'المنسقين',phone:'55110085',email:'mr_dharman@hotmail.com',notes:''},
+  {id:'p70',name:'محمد يوسف الزياره',dept:'المنسقين',phone:'55008815',email:'alzeyara85@hotmail.com',notes:''},
+  {id:'p71',name:'خالد علي الكبيسي',dept:'المنسقين',phone:'55555647',email:'k-647@hotmail.com',notes:''},
+  {id:'p72',name:'ناصر فهد الكواري',dept:'المنسقين',phone:'',email:'',notes:''},
+  {id:'p73',name:'احمد نفوه',dept:'المنسقين',phone:'55122255',email:'ahmednafwa@gmail.com',notes:'28663403774'},
+  {id:'p74',name:'صالح جابر ظرمان المري',dept:'المنسقين',phone:'55110085',email:'mr_dharman@hotmail.com',notes:''},
+  {id:'p75',name:'حامد الاحبابي',dept:'المنسقين',phone:'55648745',email:'hamed-qatar@outlook.com',notes:''},
+  {id:'p76',name:'احمد العجي',dept:'المنسقين',phone:'55550992',email:'cib99@hotmail.com',notes:''},
+  {id:'p77',name:'احمد السعدي',dept:'المنسقين',phone:'55299995',email:'abn.qtr82@gmail.com',notes:''},
+  {id:'p78',name:'سلطان الخاطر',dept:'المنسقين',phone:'33700006',email:'Sbmalk98@gmail.com',notes:''},
+  {id:'p79',name:'محمد الزيارة',dept:'المنسقين',phone:'55815814',email:'malzeyara@qsl.com.qa',notes:''},
+  {id:'p80',name:'خالد الكبيسي',dept:'المنسقين',phone:'55555647',email:'k-647@hotmail.com',notes:''},
+  {id:'p81',name:'عبدالعزيز البوعينين',dept:'المنسقين',phone:'55688865',email:'a9.buainain@gmail.com',notes:''},
+  {id:'p82',name:'سعيد راشد عفيفه',dept:'المنسقين',phone:'55097776',email:'Saeed2022afifa@gmail.com',notes:''},
+  {id:'p83',name:'حمد عبدالعزيز اليافعي',dept:'المنسقين',phone:'55840062',email:'hamadalyafei79@gmail.com',notes:''},
+  {id:'p84',name:'أحمد العدساني',dept:'المراقبين',phone:'55889088',email:'aaladsani@qsl.com.qa',notes:''},
+  {id:'p85',name:'أحمد السيد',dept:'المراقبين',phone:'55858504',email:'aalsayed@qsl.com.qa',notes:''},
+  {id:'p86',name:'عبدالله الأنصاري',dept:'المراقبين',phone:'33337737',email:'aaalansari@qsl.com.qa',notes:''},
+  {id:'p87',name:'خالد الكواري',dept:'المراقبين',phone:'66666836',email:'kmalkuwari@qsl.com.qa',notes:''},
+  {id:'p88',name:'ماكسات',dept:'المراقبين',phone:'33204019',email:'maksatg@qsl.com.qa',notes:''},
+  {id:'p89',name:'ميجيل',dept:'المراقبين',phone:'55073004',email:'mheitor@qsl.com.qa',notes:''},
+  {id:'p90',name:'ابراهيم شاهين',dept:'المراقبين',phone:'55557739-66767615',email:'ibrahims@qfa.qa',notes:''},
+  {id:'p91',name:'علي حمود النعيمي',dept:'المراقبين',phone:'55068222',email:'aalnaimi@qfa.qa',notes:''},
+  {id:'p92',name:'محمد الرياشي',dept:'المراقبين',phone:'55886133',email:'Dohat2006@gmail.com',notes:''},
+  {id:'p93',name:'أحمد الحميدي',dept:'المراقبين',phone:'55828800',email:'aalhumaidi@qsl.com.qa',notes:''},
+  {id:'p94',name:'سالم العدساني',dept:'المراقبين',phone:'55877606',email:'saladsani@qsl.com.qa',notes:''},
+  {id:'p95',name:'جاسم التميمي',dept:'المراقبين',phone:'66222207',email:'jaltamimi@qsl.com.qa',notes:''},
+  {id:'p96',name:'حسن الانصاري',dept:'المراقبين',phone:'55808062',email:'halansari@qsl.com.qa',notes:''},
+  {id:'p97',name:'هادي المري',dept:'المراقبين',phone:'55566965',email:'halmarri@qsl.com.qa',notes:''},
+  {id:'p98',name:'حسين الشرشيني',dept:'المراقبين',phone:'50001513',email:'halsharshani@qfa.qa',notes:''},
+  {id:'p99',name:'هادي المري',dept:'المراقبين',phone:'55566965',email:'halmarri@qsl.com.qa',notes:''},
+  {id:'p100',name:'جاسم التميمي',dept:'المراقبين',phone:'33055825',email:'anikimbaev@qfa.qa',notes:''},
+  {id:'p101',name:'حسين الشرشيني',dept:'المراقبين',phone:'50001513',email:'halsharshani@qfa.qa',notes:''},
+  {id:'p102',name:'هادي المري',dept:'المراقبين',phone:'55890906',email:'h.almannai@qfa.com.qa',notes:''},
+  {id:'p103',name:'محمد الرياشي',dept:'المراقبين',phone:'55886133',email:'',notes:''},
+  {id:'p104',name:'محمد مبارك المهندي',dept:'المراقبين',phone:'55852111',email:'mohdm3@hotmail.com',notes:''},
+  {id:'p105',name:'يوسف بخيت الكواري',dept:'المراقبين',phone:'55534374',email:'alkwari_qatar@hotmail.com',notes:''},
+  {id:'p106',name:'راشد الدوسري',dept:'المراقبين',phone:'55533997',email:'rich1806@yahoo.com',notes:''},
+  {id:'p107',name:'خالد الرميحي',dept:'المراقبين',phone:'55662565',email:'',notes:''},
+  {id:'p108',name:'علي شير',dept:'المراقبين',phone:'33055825',email:'',notes:''},
+  {id:'p109',name:'خالد الكبيسي',dept:'المراقبين',phone:'55555647',email:'k-647@hotmail.com',notes:''},
+  {id:'p110',name:'احمد الرميحي',dept:'المراقبين',phone:'30178813',email:'alrumaihi@qfa.com.qa',notes:''},
 ];
 
-const D26={p01:{L:{1:2,2:1,3:2,4:1,5:1,6:1,9:1},Q:{R1:2,R2:1,R4:2}},p02:{L:{1:1,2:2,3:1,4:1,5:1,6:1,9:1},Q:{R1:1,R2:1}},p03:{L:{1:1,2:2,3:2,4:1,5:1,6:1,9:1},Q:{R1:2,R2:2,R4:1}},p04:{L:{4:1,5:1,6:1,9:1},Q:{R1:1,R2:2,R4:1}},p05:{L:{4:1,5:1,6:1,9:1},Q:{R1:2,R2:2,R4:2}},p06:{L:{1:2,2:1,3:1,4:1,5:1,6:1,9:1},Q:{R2:1,R4:2}},p07:{Q:{R1:2,R2:1,R4:1}},p08:{L:{3:1,4:1,5:2},Q:{R1:1}},p09:{L:{1:2,2:2,3:1,4:1,5:1,6:2},Q:{R1:1,R2:1}},p10:{L:{1:1,2:1,3:1,4:2}},p11:{L:{1:2,2:2,3:1,4:1,5:2,7:1,8:1},Q:{R2:1}},p12:{L:{1:1,5:1,6:1,7:1,9:1},Q:{R1:1,R2:1,R3:1,R4:1,R5:1}},p13:{L:{1:1,2:2,4:1,6:1,9:1},Q:{R1:1,R2:1,R3:1,R4:1,R5:1}},p14:{L:{1:1,2:1,3:1,5:1,8:1},Q:{R1:1,R2:2,R3:1,R4:1}},p16:{L:{8:1,9:1},Q:{R3:1,R4:1,R5:1}},p18:{L:{6:1,7:1,8:1},Q:{R3:2,R4:1,R5:2}},p19:{L:{2:1,3:1,4:1,7:1,8:1},Q:{R1:1,R4:1,R5:1}},p21:{L:{3:1,4:1,5:1,6:1,7:1,9:1},Q:{R1:1,R2:2,R3:1,R5:1}},p23:{L:{1:1,3:1},Q:{R4:1}},p24:{L:{1:1,3:1,4:1,5:1,6:1,8:1,9:1},Q:{R1:1,R2:1,R3:1,R5:1}},p25:{L:{2:1,3:1,4:1,8:1,9:1},Q:{R4:1}},p26:{L:{4:1,5:1,6:1,7:1},Q:{R1:2,R2:2,R3:1,R5:1}},p27:{L:{1:1,2:1,5:1,7:1},Q:{R1:2,R2:1,R3:1,R4:1,R5:1}},p28:{L:{1:1,3:1,4:1},Q:{R2:2,R3:1,R4:1}},p29:{L:{8:1},Q:{R2:1,R3:1,R4:1,R5:1}},p30:{L:{4:1,6:1,7:1,9:1},Q:{R2:1,R3:1,R4:1}},p31:{L:{2:1,7:1,9:1},Q:{R1:1,R3:1,R4:1}},p33:{L:{4:1,6:2},Q:{R1:1,R2:2,R5:1}},p34:{L:{1:1,2:1,5:1},Q:{R1:1,R3:1,R5:1}},p35:{L:{1:1,3:1,4:1,8:1},Q:{R3:1,R5:1}},p36:{L:{1:1,5:1,9:1},Q:{R4:1,R5:1}},p37:{L:{3:1,4:1,5:1,6:1,8:1},Q:{R1:1}},p38:{L:{2:1,3:1,5:1},Q:{R1:1,R3:1,R4:1,R5:1}},p39:{L:{2:1,4:1,5:1,6:1,7:1},Q:{R1:1}},p40:{L:{1:1,7:1,8:1,9:1},Q:{R4:1,R5:1}},p41:{L:{2:1,3:1,8:1},Q:{R1:1,R3:1,R5:1}},p42:{L:{1:1,3:1,5:1,6:1},Q:{R1:1,R2:1,R3:1,R5:1}},p43:{L:{2:1},Q:{R1:2,R2:2,R3:1,R4:1}},p44:{L:{7:2,8:1,9:2},Q:{R3:1,R4:1,R5:1}},p45:{L:{1:2,2:2,3:2,4:1,5:1,6:1,7:1,8:1}},p46:{L:{1:1,2:1,3:1,4:1,7:1,8:1,9:1},Q:{R1:1,R2:1,R3:1,R4:1,R5:1}},p47:{L:{3:1,4:1,5:1,6:1,7:1,8:1,9:1}},p53:{L:{1:1,2:1,4:1,7:1,8:1,9:1},Q:{R1:1,R2:1,R3:1,R4:1,R5:1}},p54:{L:{1:1,2:1,3:1,5:2,6:1,7:1,8:1,9:1}},p55:{L:{1:1,2:1,3:1,4:1,5:1,6:2,7:1,8:1,9:1}},p56:{L:{4:1,6:1},Q:{R1:1,R2:1,R5:1}},p57:{L:{5:1,9:1},Q:{R1:2,R2:1,R3:1,R5:1}},p58:{Q:{R1:1,R2:1,R3:1,R4:1,R5:1}},p59:{Q:{R1:1,R2:1,R3:1,R4:1,R5:1}},p60:{Q:{R1:1,R2:1,R3:1,R4:1}},p61:{Q:{R1:1,R2:1,R3:1,R4:1,R5:1}},p62:{Q:{R1:1,R2:1,R3:1,R4:1,R5:1}},p63:{Q:{R2:1,R4:1,R5:1}},p64:{Q:{R3:2,R4:1,R5:1}},p65:{L:{3:1,4:1,8:1}},p66:{L:{1:1,2:1,3:1,8:1},Q:{R1:1,R5:1}},p67:{L:{1:1,2:1,5:1,6:1,9:1},Q:{R1:2,R2:1,R3:1,R4:1}},p68:{L:{1:1,2:1,3:1,5:1,6:1,8:1,9:1}},p69:{L:{1:1,2:1,4:1,5:1,6:1,8:1,9:1},Q:{R1:1,R2:1,R3:1,R4:1}},p70:{L:{1:1,3:1,4:1,5:1,6:1,9:1},Q:{R1:1,R2:1,R3:1,R4:1,R5:1}},p71:{L:{3:1,5:1,8:1,9:1},Q:{R1:1,R2:1,R3:1,R5:1}},p72:{L:{2:1,3:1,4:1,6:1,8:1}},p73:{L:{1:1,4:1},Q:{R3:1,R5:1}},p74:{L:{5:1},Q:{R1:1,R2:1,R3:1,R4:1,R5:1}},p75:{Q:{R1:1,R2:1,R5:1}},p76:{Q:{R2:2,R3:1,R4:1}},p78:{Q:{R1:1,R2:1,R3:1,R4:1,R5:1}},p79:{L:{2:1},Q:{R1:1,R4:1,R5:1}},p80:{L:{4:1,6:1,9:1}},p81:{Q:{R2:1,R3:1,R4:1,R5:1}},p82:{Q:{R3:1,R4:1,R5:1}}};
-function bR(){const r={};for(const[p,d]of Object.entries(D26)){const v={};if(d.L)for(const[k,n]of Object.entries(d.L))v[`league__${k}`]=n;if(d.Q)for(const[k,n]of Object.entries(d.Q))v[`qsl__${k}`]=n;r[p]=v;}return r;}
+const D26={
+  p01:{'league__1':2,'league__2':1,'league__3':2,'league__4':1,'league__5':1,'league__6':1,'league__7':2,'league__8':1,'league__9':1,'league__10':1,'league__11':1,'league__13':1,'league__14':1,'league__15':1,'league__16':1,'league__19':1,'league__20':1,'league__21':1,'qsl__R1':2,'qsl__R2':1,'qsl__R3':2,'qsl__R4':2,'qsl__R5':1,'qsl__R6':1,'qsl__R7':2,'qsl__R8':1,'qsl__R9':2,'qsl__SF':1},
+  p02:{'league__1':1,'league__2':2,'league__3':1,'league__4':1,'league__5':1,'league__6':1,'league__8':1,'league__9':1,'league__11':1,'league__12':1,'league__13':1,'league__14':1,'league__15':1,'league__16':1,'league__17':1,'league__18':1,'league__19':1,'qsl__R1':1,'qsl__R2':1,'qsl__R3':1,'qsl__R5':2,'qsl__R6':1,'qsl__R10':2,'qsl__PO':1},
+  p03:{'league__1':1,'league__2':2,'league__3':2,'league__4':1,'league__5':1,'league__6':1,'league__7':1,'league__8':1,'league__9':1,'league__10':1,'league__12':1,'league__13':1,'league__14':1,'league__16':1,'league__17':1,'league__18':1,'league__19':1,'league__20':1,'league__21':1,'qsl__R1':2,'qsl__R2':2,'qsl__R3':1,'qsl__R4':2,'qsl__R5':1,'qsl__R6':2,'qsl__R7':1,'qsl__R8':2,'qsl__R9':2,'qsl__R10':2,'qsl__PO':1,'qsl__SF':1},
+  p04:{'league__4':1,'league__5':1,'league__6':1,'league__7':1,'league__8':1,'league__9':1,'league__10':1,'league__11':1,'league__12':1,'league__13':1,'league__14':1,'league__15':1,'league__16':1,'league__17':1,'league__18':1,'league__19':1,'league__20':1,'league__21':1,'qsl__R1':1,'qsl__R2':2,'qsl__R3':2,'qsl__R4':1,'qsl__R5':2,'qsl__R6':2,'qsl__R7':2,'qsl__R8':2,'qsl__R9':1,'qsl__R10':1,'qsl__PO':1,'qsl__QF':1},
+  p05:{'league__4':1,'league__5':1,'league__6':1,'league__7':1,'league__8':1,'league__9':1,'league__10':1,'league__11':1,'league__12':1,'league__13':1,'league__14':1,'league__15':1,'league__16':1,'league__17':1,'league__18':1,'league__19':1,'league__20':1,'league__21':1,'qsl__R1':2,'qsl__R2':2,'qsl__R3':2,'qsl__R4':2,'qsl__R5':2,'qsl__R6':1,'qsl__R7':2,'qsl__R8':2,'qsl__R9':2,'qsl__R10':1,'qsl__PO':1,'qsl__QF':1},
+  p06:{'league__1':2,'league__2':1,'league__3':1,'league__4':1,'league__5':1,'league__6':1,'league__7':1,'league__8':1,'league__9':1,'league__10':1,'league__11':1,'league__12':1,'league__15':1,'league__16':1,'league__17':1,'league__18':1,'league__20':1,'league__21':1,'qsl__R2':1,'qsl__R3':1,'qsl__R4':2,'qsl__R5':1,'qsl__R6':2,'qsl__R7':1,'qsl__R8':1,'qsl__R9':2,'qsl__R10':2,'qsl__PO':1,'qsl__QF':1},
+  p07:{'league__10':1,'league__11':1,'league__12':1,'league__13':1,'league__14':1,'league__15':1,'league__17':1,'league__18':1,'league__19':1,'league__20':1,'league__21':1,'qsl__R1':2,'qsl__R2':1,'qsl__R3':1,'qsl__R4':1,'qsl__R5':1,'qsl__R6':1,'qsl__R7':2,'qsl__R8':2,'qsl__R9':1,'qsl__R10':2,'qsl__PO':1,'qsl__QF':1},
+  p08:{'league__3':1,'league__4':1,'league__5':2,'league__11':1,'league__13':1,'league__15':1,'league__18':1,'league__19':2,'qsl__R1':1},
+  p09:{'league__1':2,'league__2':2,'league__3':1,'league__4':1,'league__5':1,'league__6':2,'league__18':1,'qsl__R1':1,'qsl__R2':1},
+  p10:{'league__1':1,'league__2':1,'league__3':1,'league__4':2,'league__11':1,'league__18':1,'league__19':1},
+  p11:{'league__1':2,'league__2':2,'league__3':1,'league__4':1,'league__5':2,'league__7':1,'league__8':1,'league__12':1,'league__14':1,'league__17':1,'qsl__R2':1},
+  p12:{'league__1':1,'league__5':1,'league__6':1,'league__9':1,'league__10':1,'league__11':1,'league__17':1,'league__20':1,'qsl__R1':1,'qsl__R2':1,'qsl__R3':1,'qsl__R4':1,'qsl__R5':1,'qsl__R6':2,'qsl__R10':1,'qsl__PO':1,'qsl__QF':1},
+  p14:{'league__1':1,'league__2':1,'league__3':1,'league__5':1,'league__7':2,'league__8':1,'league__13':1,'league__21':1,'qsl__R1':1,'qsl__R2':2,'qsl__R3':1,'qsl__R4':1,'qsl__R6':2,'qsl__R10':2},
+  p18:{'league__6':1,'league__7':1,'league__8':1,'league__14':1,'league__18':1,'league__19':1,'qsl__R3':2,'qsl__R4':1,'qsl__R5':2,'qsl__QF':1,'qsl__SF':1},
+  p19:{'league__2':1,'league__3':1,'league__4':1,'league__8':1,'league__12':1,'league__13':1,'league__14':1,'league__16':1,'league__18':1,'league__20':1,'league__21':1,'league__22':1,'qsl__R1':1,'qsl__R4':1,'qsl__R5':1,'qsl__R10':1,'qsl__PO':1,'qsl__QF':1},
+  p21:{'league__3':1,'league__4':1,'league__5':1,'league__6':1,'league__7':1,'league__9':1,'league__10':1,'league__13':1,'league__14':1,'league__15':1,'league__16':1,'league__20':1,'league__21':1,'league__22':1,'qsl__R1':1,'qsl__R2':2,'qsl__R3':1,'qsl__R5':1,'qsl__R6':1,'qsl__PO':1},
+  p23:{'league__1':1,'league__3':1,'league__17':1,'qsl__R4':1},
+  p24:{'league__1':1,'league__3':1,'league__4':1,'league__5':1,'league__6':1,'league__8':1,'league__9':1,'league__10':1,'league__11':1,'league__12':1,'league__14':1,'league__15':1,'league__16':1,'league__18':1,'league__19':1,'league__20':1,'league__22':1,'qsl__R1':1,'qsl__R2':1,'qsl__R3':1,'qsl__R5':1,'qsl__R6':1,'qsl__R10':1,'qsl__PO':1},
+  p25:{'league__2':1,'league__3':1,'league__4':1,'league__8':1,'league__9':1,'league__11':1,'league__12':1,'league__15':1,'league__17':1,'qsl__R4':1,'qsl__R6':1,'qsl__R10':1},
+  p26:{'league__4':1,'league__5':1,'league__6':1,'league__11':1,'league__12':1,'league__14':1,'league__15':1,'league__17':1,'league__18':1,'qsl__R1':2,'qsl__R2':2,'qsl__R3':1,'qsl__R5':1,'qsl__R10':1,'qsl__PO':1,'qsl__QF':1},
+  p27:{'league__1':1,'league__2':1,'league__5':1,'league__13':1,'league__14':1,'league__15':1,'league__16':1,'league__18':1,'league__19':1,'league__22':1,'qsl__R1':2,'qsl__R2':1,'qsl__R3':1,'qsl__R4':1,'qsl__R5':1,'qsl__R6':1,'qsl__R10':1},
+  p28:{'league__1':1,'league__2':2,'league__4':1,'league__6':1,'league__9':1,'league__10':1,'league__13':1,'league__16':1,'league__17':1,'league__19':1,'league__20':1,'league__21':1,'qsl__R1':1,'qsl__R2':1,'qsl__R3':1,'qsl__R4':1,'qsl__R5':1},
+  p29:{'league__7':1,'league__8':1,'league__9':1,'league__10':1,'league__11':1,'league__12':1,'league__17':1,'league__19':1,'league__21':1,'league__22':1,'qsl__R3':1,'qsl__R4':2,'qsl__R5':1,'qsl__R6':1,'qsl__R7':1,'qsl__R10':1},
+  p30:{'league__7':1,'league__10':1,'league__11':1,'league__12':1,'league__13':1,'league__15':1,'league__16':1,'league__18':1,'league__19':1,'league__20':1,'league__21':1,'league__22':1,'qsl__R6':1,'qsl__R7':1,'qsl__R10':1,'qsl__PO':1,'qsl__SF':1,'qsl__F':1},
+  p32:{'league__1':1,'league__3':1,'league__4':1,'league__15':1,'league__21':1,'qsl__R2':2,'qsl__R3':1,'qsl__R4':1,'qsl__R6':2,'qsl__R7':1,'qsl__R8':1,'qsl__R9':1,'qsl__R10':1},
+  p33:{'league__8':1,'league__12':1,'league__13':1,'league__15':1,'league__18':1,'league__19':2,'league__20':1,'qsl__R2':1,'qsl__R3':1,'qsl__R4':1,'qsl__R5':1,'qsl__R10':1,'qsl__PO':1},
+  p34:{'league__4':1,'league__6':1,'league__7':1,'league__9':1,'league__12':1,'league__16':1,'league__21':1,'qsl__R2':1,'qsl__R3':1,'qsl__R4':1,'qsl__R7':1,'qsl__R10':1,'qsl__PO':1},
+  p35:{'league__2':1,'league__7':1,'league__9':1,'league__11':1,'league__12':1,'league__17':1,'qsl__R1':1,'qsl__R3':1,'qsl__R4':1,'qsl__R7':1,'qsl__R10':1},
+  p36:{'league__17':1,'qsl__R10':1},
+  p37:{'league__4':1,'league__6':2,'league__10':1,'league__18':1,'league__20':1,'league__22':1,'qsl__R1':1,'qsl__R2':2,'qsl__R5':1,'qsl__R6':2,'qsl__R7':1,'qsl__R8':2,'qsl__R9':1},
+  p38:{'league__1':1,'league__2':1,'league__5':1,'league__13':1,'league__15':1,'league__17':1,'league__22':1,'qsl__R1':1,'qsl__R3':1,'qsl__R5':1,'qsl__R10':1,'qsl__PO':1,'qsl__QF':1},
+  p39:{'league__1':1,'league__3':1,'league__4':1,'league__8':1,'league__11':1,'league__14':1,'league__17':1,'league__19':1,'league__22':1,'qsl__R3':1,'qsl__R5':1,'qsl__R6':1,'qsl__R8':1,'qsl__R9':1},
+  p40:{'league__1':1,'league__5':1,'league__9':1,'league__11':1,'league__15':1,'league__16':1,'league__20':1,'qsl__R4':1,'qsl__R5':1,'qsl__R7':1,'qsl__PO':1,'qsl__SF':1},
+  p41:{'league__3':1,'league__4':1,'league__5':1,'league__6':1,'league__8':1,'league__10':1,'league__11':1,'league__13':1,'league__14':1,'league__17':1,'league__19':1,'league__20':1,'league__21':1,'qsl__R1':1,'qsl__R7':1,'qsl__PO':1,'qsl__QF':1},
+  p42:{'league__2':1,'league__3':1,'league__5':1,'league__15':1,'league__21':1,'qsl__R1':1,'qsl__R2':1,'qsl__R4':1,'qsl__R5':1,'qsl__R6':1,'qsl__R7':1,'qsl__R8':1,'qsl__R9':2,'qsl__R10':1,'qsl__SF':1},
+  p43:{'league__2':1,'league__4':1,'league__5':1,'league__6':1,'league__7':1,'league__10':1,'league__13':1,'league__14':1,'league__18':1,'qsl__R1':1,'qsl__R7':1},
+  p44:{'league__1':1,'league__7':1,'league__8':1,'league__9':1,'league__10':1,'league__16':1,'league__18':1,'league__22':1,'qsl__R4':1,'qsl__R5':1,'qsl__R7':1,'qsl__R8':1,'qsl__R10':1},
+  p45:{'league__2':1,'league__3':1,'league__8':1,'league__13':1,'league__14':1,'league__16':1,'league__18':1,'league__19':1,'league__20':1,'league__22':1,'qsl__R1':1,'qsl__R3':1,'qsl__R5':1,'qsl__F':1},
+  p46:{'league__1':1,'league__3':1,'league__5':1,'league__6':1,'league__10':1,'league__12':1,'league__14':1,'league__18':1,'qsl__R1':1,'qsl__R2':1,'qsl__R3':1,'qsl__R5':1,'qsl__R6':1,'qsl__R8':1,'qsl__R9':1,'qsl__R10':1,'qsl__QF':1},
+  p47:{'league__2':1,'league__11':1,'league__12':1,'league__16':1,'league__21':1,'qsl__R1':2,'qsl__R2':2,'qsl__R3':1,'qsl__R4':1,'qsl__R6':1,'qsl__R8':1,'qsl__R9':2},
+  p48:{'league__7':2,'league__8':1,'league__9':2,'league__10':1,'league__11':1,'league__12':1,'league__13':1,'league__14':1,'league__15':1,'league__16':1,'league__17':1,'league__19':1,'league__20':1,'league__21':1,'league__22':1,'qsl__R3':1,'qsl__R4':2,'qsl__R5':1,'qsl__R6':2,'qsl__R7':1,'qsl__R8':2,'qsl__R9':2,'qsl__R10':1,'qsl__PO':1,'qsl__QF':1},
+  p49:{'league__1':2,'league__2':2,'league__3':2,'league__4':1,'league__5':1,'league__6':1,'league__7':2,'league__8':1,'league__10':2,'league__11':1,'league__12':2,'league__13':1,'league__15':1,'league__16':1,'league__17':1,'league__18':1,'league__19':1,'league__20':1,'league__21':1,'league__22':1,'qsl__R7':1},
+  p50:{'league__1':1,'league__2':1,'league__3':1,'league__4':1,'league__8':1,'league__9':1,'league__12':1,'league__13':1,'league__14':1,'league__16':1,'league__17':1,'league__18':1,'league__19':1,'league__20':1,'league__21':1,'league__22':1,'qsl__R1':1,'qsl__R2':1,'qsl__R3':1,'qsl__R4':1,'qsl__R5':1,'qsl__R10':1,'qsl__PO':1,'qsl__QF':1,'qsl__SF':1},
+  p51:{'league__3':1,'league__4':1,'league__5':1,'league__6':1,'league__7':1,'league__8':1,'league__9':1,'league__10':1,'league__11':1,'league__12':1,'league__13':1,'league__14':1,'league__16':1,'league__18':1,'league__19':1,'league__20':1},
+  p61:{'league__11':1,'league__14':1},
+  p62:{'league__1':1,'league__2':1,'league__4':1,'league__8':1,'league__9':1,'league__10':1,'league__11':2,'league__12':1,'league__13':1,'league__15':2,'league__16':1,'league__17':1,'league__18':1,'league__19':1,'league__20':1,'league__21':1,'league__22':1,'qsl__R1':1,'qsl__R2':1,'qsl__R3':1,'qsl__R4':1,'qsl__R5':1,'qsl__R10':1,'qsl__QF':1},
+  p64:{'league__1':1,'league__2':1,'league__3':1,'league__5':2,'league__6':1,'league__7':2,'league__8':1,'league__9':1,'league__10':1,'league__21':1,'qsl__R7':1},
+  p66:{'league__1':1,'league__2':1,'league__3':1,'league__4':1,'league__5':1,'league__6':2,'league__8':1,'league__9':1,'league__11':1,'league__12':1,'league__13':1,'league__14':1,'league__15':1,'league__16':1,'league__17':1,'league__18':1,'league__19':1,'league__20':1},
+  p72:{'qsl__R10':1},
+  p73:{'league__4':1,'league__6':1,'league__10':1,'league__13':1,'league__14':1,'league__17':1,'league__22':1,'qsl__R1':1,'qsl__R2':1,'qsl__R5':1,'qsl__R6':1,'qsl__R7':1,'qsl__R8':1,'qsl__R9':2,'qsl__R10':1,'qsl__PO':2,'qsl__SF':1,'qsl__F':1},
+  p74:{'league__5':1,'league__7':1,'league__9':1,'league__15':1,'league__17':1,'league__22':1,'qsl__R1':2,'qsl__R2':1,'qsl__R3':1,'qsl__R4':1,'qsl__R5':1,'qsl__R6':1,'qsl__R7':1,'qsl__R8':3,'qsl__R9':2,'qsl__R10':1,'qsl__PO':1,'qsl__QF':1},
+  p75:{'league__14':1,'league__15':1,'league__16':1,'league__18':1,'league__19':1,'league__20':1,'league__21':1,'league__22':1,'qsl__R1':1,'qsl__R2':1,'qsl__R3':1,'qsl__R4':1,'qsl__R5':1,'qsl__R7':1,'qsl__R8':2,'qsl__R9':2,'qsl__R10':1,'qsl__PO':1,'qsl__QF':1,'qsl__F':1},
+  p76:{'qsl__R1':1,'qsl__R2':1,'qsl__R3':1,'qsl__R4':1,'qsl__R5':1,'qsl__R6':2,'qsl__R7':2,'qsl__R8':2,'qsl__R9':2,'qsl__R10':2,'qsl__PO':1},
+  p77:{'qsl__R1':1,'qsl__R2':1,'qsl__R3':1,'qsl__R4':1,'qsl__R6':1},
+  p78:{'qsl__R1':1,'qsl__R2':1,'qsl__R3':1,'qsl__R4':1,'qsl__R5':1,'qsl__R6':2,'qsl__R7':1,'qsl__R8':1,'qsl__R9':1,'qsl__R10':1},
+  p79:{'league__21':1,'qsl__R1':1,'qsl__R2':1,'qsl__R3':1,'qsl__R4':1,'qsl__R5':1,'qsl__R10':1},
+  p81:{'qsl__R2':1,'qsl__R4':1,'qsl__R5':1,'qsl__R6':1,'qsl__R7':1,'qsl__R9':1},
+  p82:{'qsl__R3':2,'qsl__R4':1,'qsl__R5':1,'qsl__R6':2,'qsl__R7':1,'qsl__R8':1},
+  p84:{'league__3':1,'league__4':1,'league__7':1,'league__8':1,'league__11':1,'league__17':1,'league__18':1,'league__19':1,'league__20':1},
+  p85:{'league__1':1,'league__2':1,'league__3':1,'league__8':1,'league__12':1,'league__13':1,'league__14':1,'league__15':1,'league__16':1,'league__17':1,'league__18':1,'league__19':1,'league__20':1,'league__21':1,'qsl__R1':1,'qsl__R5':1,'qsl__R6':1,'qsl__R9':1,'qsl__R10':1,'qsl__PO':1},
+  p86:{'league__1':1,'league__2':1,'league__5':1,'league__6':1,'league__9':1,'league__12':1,'league__13':1,'league__14':1,'league__15':1,'league__16':1,'league__17':1,'league__18':1,'league__19':1,'league__20':1,'league__21':1,'league__22':1,'qsl__R1':2,'qsl__R2':1,'qsl__R3':1,'qsl__R4':1,'qsl__R6':1,'qsl__R10':1,'qsl__PO':1,'qsl__SF':1},
+  p87:{'league__1':1,'league__2':1,'league__3':1,'league__5':1,'league__6':1,'league__7':1,'league__8':1,'league__9':1,'league__10':1,'league__11':1,'league__12':1,'league__14':1,'league__15':1,'league__16':1,'league__18':1,'league__19':1,'league__20':1,'league__21':1,'league__22':1,'qsl__R6':2,'qsl__R7':2,'qsl__R8':3,'qsl__R9':2,'qsl__PO':1,'qsl__SF':1},
+  p88:{'league__1':1,'league__2':1,'league__4':1,'league__5':1,'league__6':1,'league__7':1,'league__8':1,'league__9':1,'league__10':2,'league__11':1,'league__13':1,'league__14':1,'league__15':1,'league__16':1,'league__17':1,'league__18':1,'league__20':1,'league__21':1,'league__22':1,'qsl__R1':1,'qsl__R2':1,'qsl__R3':1,'qsl__R4':2,'qsl__R6':1,'qsl__R7':1,'qsl__R8':3,'qsl__R9':3,'qsl__QF':1},
+  p89:{'league__1':1,'league__3':1,'league__4':1,'league__5':1,'league__6':1,'league__7':2,'league__9':1,'league__10':1,'league__11':2,'league__12':1,'league__13':1,'league__14':1,'league__15':1,'league__16':1,'league__17':1,'league__18':1,'league__20':1,'qsl__R1':1,'qsl__R2':1,'qsl__R3':1,'qsl__R4':1,'qsl__R5':1,'qsl__R6':1,'qsl__R10':1,'qsl__PO':1,'qsl__QF':1},
+  p90:{'league__3':1,'league__5':1,'league__7':1,'league__8':1,'league__9':1,'league__10':1,'league__19':1,'league__21':1,'league__22':1,'qsl__R1':1,'qsl__R2':1,'qsl__R3':1,'qsl__R5':1,'qsl__R6':1,'qsl__R7':2,'qsl__R10':1},
+  p91:{'league__2':1,'league__3':1,'league__4':1,'league__6':1,'league__8':1,'league__13':1,'league__14':1,'league__15':1,'league__17':1,'league__19':1,'league__21':1,'league__22':1},
+  p92:{'league__1':1,'league__4':1,'league__11':1,'qsl__R3':1,'qsl__R5':1,'qsl__R10':1,'qsl__PO':1},
+  p93:{'league__5':1,'qsl__R1':1,'qsl__R2':1,'qsl__R3':1,'qsl__R4':1,'qsl__R5':1,'qsl__R6':1,'qsl__R7':2,'qsl__R8':3,'qsl__R9':3,'qsl__R10':1},
+  p94:{'qsl__R1':1,'qsl__R2':1,'qsl__R5':1,'qsl__R6':1,'qsl__R7':1},
+  p95:{'qsl__R2':2,'qsl__R3':1,'qsl__R4':1,'qsl__R6':1,'qsl__R7':1,'qsl__R8':1,'qsl__R10':1},
+  p97:{'qsl__R1':1,'qsl__R2':1,'qsl__R3':1,'qsl__R4':1,'qsl__R5':1,'qsl__R10':1},
+  p98:{'league__2':1,'league__12':1,'league__16':1,'qsl__R1':1,'qsl__R4':1,'qsl__R5':1,'qsl__R10':1,'qsl__QF':1},
+  p106:{'league__4':1,'league__6':1,'league__9':1,'league__10':1,'league__12':1,'league__13':1,'league__22':1},
+  p108:{'qsl__R2':1,'qsl__R3':1,'qsl__R4':1,'qsl__R5':1,'qsl__R10':1,'qsl__PO':1},
+  p109:{'qsl__R3':1,'qsl__R4':1,'qsl__R5':1,'qsl__R7':1,'qsl__R9':1,'qsl__QF':1},
+  p110:{'qsl__F':1},
+};
+function bR(){return JSON.parse(JSON.stringify(D26));}
 
 let staff=JSON.parse(JSON.stringify(IS));
 let seasons=[{id:'s26',name:'2025-2026',records:bR(),comps:JSON.parse(JSON.stringify(DEF_COMPS))}];
@@ -449,7 +569,7 @@ function setDeptOverride(pid,deptKey){
   var key=rKey(cComp,cRnd);
   if(!deptOverride[pid])deptOverride[pid]={};
   deptOverride[pid][key]=deptKey;
-  schedSave();
+  sched();
 }
 let ePID=null,svT=null;
 const SB_URL='https://acrnsczerbefmvqfxjhh.supabase.co';
@@ -505,9 +625,9 @@ async function cloudSave(){
   }catch(e){console.error(e);setSY('e','فشل الحفظ');}
 }
 
-function sched(){clearTimeout(svT);svT=setTimeout(cloudSave,1500);}
+function sched(){clearTimeout(svT);svT=setTimeout(function(){cloudSave();svT=null;},400);}
 async function doSync(){const ok=await cloudLoad();if(ok)rebuildAll();}
-setInterval(async()=>{if(document.visibilityState==='visible'){const ok=await cloudLoad();if(ok)rebuildAll();}},30000);
+setInterval(async()=>{if(document.visibilityState==='visible'&&!svT){const ok=await cloudLoad();if(ok)rebuildAll();}},30000);
 
 function uid(){return 'x'+Date.now().toString(36)+Math.random().toString(36).slice(2,5)}
 function cs(){return seasons.find(s=>s.id===cSID)||seasons[0]}
@@ -516,12 +636,74 @@ function pTot(pid,sid){const s=sid?seasons.find(x=>x.id===sid):cs();if(!s?.recor
 function pC(pid,compId,sid){const s=sid?seasons.find(x=>x.id===sid):cs();if(!s?.records?.[pid])return 0;const pre=compId+'__';return Object.entries(s.records[pid]).filter(([k])=>k.startsWith(pre)).reduce((a,[,v])=>a+v,0);}
 function career(pid){return seasons.reduce((t,s)=>t+pTot(pid,s.id),0)}
 
+
+// Check if round has correct number of appointments per department
+function isRoundComplete(compId, r){
+  const expected=getExpectedMatches(compId,r);
+  if(!expected)return false;
+  const s=cs();const key=rKey(compId,r);
+  if(!s||!s.records)return false;
+  // Count per dept
+  const deptCounts={};
+  DEPTS.forEach(function(d){deptCounts[d.k]=0;});
+  staff.forEach(function(p){
+    const v=s.records[p.id]&&s.records[p.id][key]||0;
+    if(v){
+      const dept=(deptOverride[p.id]&&deptOverride[p.id][key])||p.dept;
+      if(deptCounts[dept]!==undefined)deptCounts[dept]+=v;
+    }
+  });
+  // Every department must have at least `expected` appointments
+  return Object.values(deptCounts).every(function(c){return c>=expected;});
+}
+
+// Get round summary: { dept: {actual, expected, missing} }
+function getRoundSummary(compId, r){
+  const expected=getExpectedMatches(compId,r);
+  const s=cs();const key=rKey(compId,r);
+  const summary={};
+  DEPTS.forEach(function(d){summary[d.k]={actual:0,expected:expected||0,name:d.l};});
+  if(s&&s.records){
+    staff.forEach(function(p){
+      const v=s.records[p.id]&&s.records[p.id][key]||0;
+      if(v){
+        const dept=(deptOverride[p.id]&&deptOverride[p.id][key])||p.dept;
+        if(summary[dept])summary[dept].actual+=v;
+      }
+    });
+  }
+  return summary;
+}
+
+
+function showRoundSummary(){
+  const summary=getRoundSummary(cComp,cRnd);
+  const expected=getExpectedMatches(cComp,cRnd);
+  if(!expected)return;
+  // Add status indicators next to dept filter buttons
+  document.querySelectorAll('#dbar-g .dt').forEach(function(btn){
+    const txt=btn.textContent.trim().replace(/\s*[✓!]\s*$/,'');
+    btn.textContent=txt;
+    if(txt==='الكل')return;
+    // Find matching dept
+    const dept=DEPTS.find(function(d){return d.l===txt;});
+    if(!dept)return;
+    const s=summary[dept.k];
+    if(!s)return;
+    const icon=s.actual>=s.expected?' ✓':(s.actual>0?' '+s.actual+'/'+s.expected:'');
+    btn.textContent=txt+icon;
+  });
+}
+
 function setV(pid,delta){
   const s=cs(),key=rKey(cComp,cRnd);
   if(!s.records)s.records={};if(!s.records[pid])s.records[pid]={};
-  const nv=Math.max(0,(s.records[pid][key]||0)+delta);
-  if(nv===0)delete s.records[pid][key];else s.records[pid][key]=nv;
+  // Instant local update
+  const cur=s.records[pid][key]||0;
+  const nv=Math.max(0,cur+delta);
+  if(nv===0){delete s.records[pid][key];}else{s.records[pid][key]=nv;}
   if(!Object.keys(s.records[pid]).length)delete s.records[pid];
+  // Update UI immediately - no waiting for anything
   const comp=getComps().find(c=>c.id===cComp)||{color:'m'};
   const C=cc(comp.color);
   const ne=document.getElementById(`cv-${pid}`),ce=document.getElementById(`cc-${pid}`),te=document.getElementById(`tot-${pid}`),re=document.getElementById(`row-${pid}`);
@@ -529,9 +711,17 @@ function setV(pid,delta){
   if(ce)ce.className='cc'+(nv?' '+C.cc:'');
   if(te){const t=pTot(pid);te.textContent=t||0;te.className='stot'+(t?'':' z');}
   if(re){const i=parseInt(re.dataset.i)||0;re.className=`sr${i%2?' ev':''}${nv?' hv':''}`;}
-  updateRHdr();rSBar();sched();
-  const tot=staff.reduce((t,p)=>t+(s?.records?.[p.id]?.[rKey(cComp,cRnd)]||0),0);
-  document.querySelectorAll(`.rb[data-c="${cComp}"][data-r="${cRnd}"]`).forEach(b=>b.classList.toggle('hd',tot>0));
+  // Update header and validation
+  updateRHdr();rSBar();
+  // Update round button status
+  const tot=staff.reduce((t,p)=>t+(s?.records?.[p.id]?.[key]||0),0);
+  document.querySelectorAll(`.rb[data-c="${cComp}"][data-r="${cRnd}"]`).forEach(b=>{
+    b.classList.toggle('hd',tot>0);
+    b.classList.toggle('rb-full',isRoundComplete(cComp,cRnd));
+    b.classList.toggle('rb-partial',tot>0&&!isRoundComplete(cComp,cRnd));
+  });
+  // Schedule save (debounced)
+  sched();
 }
 
 function updateRHdr(){
@@ -563,7 +753,8 @@ function bRNav(){
       const key=rKey(comp.id,r);
       const tot=staff.reduce((t,p)=>t+(s?.records?.[p.id]?.[key]||0),0);
       const isOn=comp.id===cComp&&String(r)===String(cRnd);
-      html+=`<button class="rb${isOn?' '+C.btn:''}${tot>0?' hd':''}" data-c="${comp.id}" data-r="${r}" onclick="selR('${comp.id}','${String(r).replace(/'/g,"\\'")}')"> ${r} </button>`;
+      const status=tot>0?(isRoundComplete(comp.id,r)?' rb-full':' rb-partial'):'';
+      html+=`<button class="rb${isOn?' '+C.btn:''}${tot>0?' hd':''}${status}" data-c="${comp.id}" data-r="${r}" onclick="selR('${comp.id}','${String(r).replace(/'/g,"\\'")}')"> ${r} </button>`;
     });
     html+='<span class="rsep"></span>';
   });
@@ -592,16 +783,25 @@ function rRHdr(){
   const comp=getComps().find(c=>c.id===cComp)||{name:cComp,color:'m'};
   const C=cc(comp.color);
   const df=DF.g,q=(document.getElementById('gsrch')?.value||'').toLowerCase();
-  const fl=staff.filter(p=>(!df||p.dept===df)&&(!q||p.name.includes(q)));
+  const fl=staff.filter(p=>{
+    if(q&&!p.name.includes(q))return false;
+    if(!df)return true;
+    const effDept=(deptOverride[p.id]&&deptOverride[p.id][key])||p.dept;
+    return effDept===df;
+  });
+  const expected=getExpectedMatches(cComp,cRnd);
+  const isFull=isRoundComplete(cComp,cRnd);
+  const expectedTotal=expected||0;
   document.getElementById('rhdr').innerHTML=`
     <div class="rhdr-left">
       <div class="rbadge ${C.badge}">${cRnd}</div>
-      <div><div class="rtitle">${comp.name}</div><div class="rsub">الموسم ${cs()?.name||''}</div></div>
+      <div><div class="rtitle">${comp.name}</div><div class="rsub">الموسم ${cs()?.name||''} ${expected?` • ${expected} مباريات`:''}</div></div>
     </div>
     <div class="rstats">
-      <div class="rstat"><div class="n" id="rh-a">${fl.filter(p=>s?.records?.[p.id]?.[key]>0).length}</div><div class="l">عامل محدد</div></div>
-      <div class="rstat"><div class="n" id="rh-t">${fl.reduce((t,p)=>t+(s?.records?.[p.id]?.[key]||0),0)}</div><div class="l">مجموع مباريات</div></div>
+      <div class="rstat"><div class="n" id="rh-a">${getExpectedMatches(cComp,cRnd)||0}</div><div class="l">عدد المباريات</div></div>
+      <div class="rstat"><div class="n" id="rh-t">${fl.reduce((t,p)=>t+(s?.records?.[p.id]?.[key]||0),0)}</div><div class="l">عدد التعيينات</div></div>
     </div>`;
+  setTimeout(showRoundSummary,30);
 }
 
 function bDB(elId,fk,cb){
@@ -659,15 +859,29 @@ function rGrid(){
 
 function rSBar(){
   const s=cs(),key=rKey(cComp,cRnd);
-  const jt=staff.reduce((t,p)=>t+(s?.records?.[p.id]?.[key]||0),0);
-  const ja=staff.filter(p=>s?.records?.[p.id]?.[key]>0).length;
-  const st=staff.reduce((t,p)=>t+pTot(p.id),0);
-  const sa=staff.filter(p=>pTot(p.id)>0).length;
+  const df=DF.g;
+  const fil=df?staff.filter(p=>p.dept===df||(deptOverride[p.id]&&deptOverride[p.id][key]===df)):staff;
+  let totalAssign=0,activeStaff=0;
+  fil.forEach(p=>{
+    const v=s?.records?.[p.id]?.[key]||0;
+    if(!v)return;
+    if(df){
+      const effDept=(deptOverride[p.id]&&deptOverride[p.id][key])||p.dept;
+      if(effDept!==df)return;
+    }
+    totalAssign+=v;activeStaff++;
+  });
+  const expected=getExpectedMatches(cComp,cRnd)||0;
+  // عدد المباريات: ثابت = expected (6 للدوري، 10 للكأس)
+  const matchCount=expected;
+  // التعيينات: مجموع كل التعيينات في الجولة (يساوي عدد العاملين × المباريات)
+  // عامل مشارك بالموسم = عدد العاملين الإجمالي حسب الفلتر
+  const sa=df?staff.filter(p=>p.dept===df).length:staff.length;
   document.getElementById('sbar').innerHTML=`
-    <div class="sbi"><div class="n">${ja}</div><div class="l">عامل في هذه الجولة</div></div>
-    <div class="sbi"><div class="n">${jt}</div><div class="l">مجموع مباريات الجولة</div></div>
-    <div class="sbi"><div class="n">${sa}</div><div class="l">عامل مشارك بالموسم</div></div>
-    <div class="sbi"><div class="n">${st}</div><div class="l">إجمالي مهام الموسم</div></div>`;
+    <div class="sbi"><div class="n">${activeStaff}</div><div class="l">عامل في هذه الجولة</div></div>
+    <div class="sbi"><div class="n">${matchCount}</div><div class="l">عدد المباريات</div></div>
+    <div class="sbi"><div class="n">${totalAssign}</div><div class="l">إجمالي التعيينات</div></div>
+    <div class="sbi"><div class="n">${sa}</div><div class="l">عامل مشارك بالموسم</div></div>`;
 }
 
 function rSum(){
@@ -889,9 +1103,9 @@ function saveDept(){
   if(!k||!l){document.getElementById('msg-dept').innerHTML='<div class="msgtxt mer">ادخل الاسمين</div>';return;}
   if(eDK){var d=DEPTS.find(function(x){return x.k===eDK;});if(d){var ok=d.k;d.k=k;d.l=l;staff.forEach(function(p){if(p.dept===ok)p.dept=k;});}}
   else{if(DEPTS.find(function(x){return x.k===k;})){document.getElementById('msg-dept').innerHTML='<div class="msgtxt mer">القسم موجود</div>';return;}var c=CLRS[DEPTS.length%CLRS.length];DEPTS.push({k:k,l:l,bg:c.bg,tc:c.tc});}
-  refreshDM();cMd('dept');rDeptMgr();if(cView==='stf')rStf();schedSave();toast('تم حفظ القسم');
+  refreshDM();cMd('dept');rDeptMgr();if(cView==='stf')rStf();sched();toast('تم حفظ القسم');
 }
-function delDeptConfirm(k){var d=DEPTS.find(function(x){return x.k===k;});if(!d||!confirm('حذف قسم '+d.l+'؟'))return;DEPTS=DEPTS.filter(function(x){return x.k!==k;});refreshDM();rDeptMgr();if(cView==='stf')rStf();schedSave();toast('تم حذف القسم');}
+function delDeptConfirm(k){var d=DEPTS.find(function(x){return x.k===k;});if(!d||!confirm('حذف قسم '+d.l+'؟'))return;DEPTS=DEPTS.filter(function(x){return x.k!==k;});refreshDM();rDeptMgr();if(cView==='stf')rStf();sched();toast('تم حذف القسم');}
 function delDept(){if(eDK)delDeptConfirm(eDK);cMd('dept');}
 function rebuildAll(){rDeptMgr();bSel();bRNav();rRHdr();rGrid();if(cView==='sum')rSum();if(cView==='rec')rRec();if(cView==='rnds')rRndMgr();if(cView==='stf')rStf();}
 
