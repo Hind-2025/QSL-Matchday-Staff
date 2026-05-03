@@ -193,7 +193,7 @@ button,select,input{font-family:'Cairo',sans-serif}
       <div><div class="btitle">كشف العاملين</div><div class="bsub">QSL Matchday Staff — Hind-2025</div></div>
     </div>
     <div class="topright">
-      <select class="ssel" id="sselEl" onchange="switchSeason()"></select>
+      <select class="ssel" id="sselEl" onchange="switchSeason()"></select><button class="btn bdel bsm no-print" onclick="delSeason()" title="حذف الموسم الحالي" style="margin-right:6px">🗑️</button>
       <button class="nsBtn" onclick="oMd('ns')">+ موسم جديد</button>
     </div>
   </div>
@@ -735,6 +735,15 @@ function updateRHdr(){
 
 function bSel(){document.getElementById('sselEl').innerHTML=seasons.map(s=>`<option value="${s.id}"${s.id===cSID?' selected':''}>${s.name}</option>`).join('');}
 function switchSeason(){cSID=document.getElementById('sselEl').value;sched();rebuildAll();}
+function delSeason(){
+  if(seasons.length<=1){alert('لا يمكن حذف الموسم الوحيد');return;}
+  var s=seasons.find(function(x){return x.id===cSID;});
+  if(!s)return;
+  if(!confirm('حذف موسم "'+s.name+'" نهائياً؟\nسيتم حذف كل بياناته!'))return;
+  seasons=seasons.filter(function(x){return x.id!==cSID;});
+  cSID=seasons[0].id;
+  bSel();rebuildAll();sched();toast('🗑️ تم حذف الموسم');
+}
 function mkSeason(){
   const nm=document.getElementById('nsn').value.trim();
   if(!nm){sMg('msg-ns','er','أدخل الاسم');return}
