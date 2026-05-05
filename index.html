@@ -206,7 +206,7 @@ button,select,input{font-family:'Cairo',sans-serif}
 <div class="sync no-print">
   <span class="dot" id="sdot"></span>
   <span id="stxt">جاري التحميل...</span>
-  <button class="sbtn" onclick="doSync()">↻ تحديث</button><button class="sbtn" onclick="openUserMgr()" id="btn-users" style="display:none">👥 المستخدمون</button><button class="sbtn" onclick="showLog()" id="btn-log" style="display:none">📋 السجل</button><span id="user-display" style="display:none;font-size:12px;color:#FFD700;margin:0 8px;font-weight:700"></span><button class="sbtn" onclick="doLogout()" id="btn-logout" style="display:none">↪ خروج</button>
+  <button class="sbtn" onclick="doSync()">↻ تحديث</button><button class="sbtn" onclick="openUserMgr()" id="btn-users" style="display:none">👥 المستخدمون</button><button class="sbtn" onclick="showLog()" id="btn-log" style="display:none">📋 السجل</button><span id="user-display" style="display:none;font-size:12px;color:#FFD700;margin:0 8px;font-weight:700"></span><button class="sbtn" onclick="changePwd()" id="btn-pwd" style="display:none">🔑 كلمة السر</button><button class="sbtn" onclick="doLogout()" id="btn-logout" style="display:none">↪ خروج</button>
   <span id="slast" style="color:rgba(255,255,255,.3);margin-right:6px"></span>
 </div>
 
@@ -1302,6 +1302,35 @@ async function showLog(){
   oMd('log');
 }
 
+
+async function changePwd(){
+  if(!currentUser)return;
+  var oldP=prompt('كلمة السر الحالية:');
+  if(!oldP)return;
+  if(currentUser.password_hash!==hashPwd(oldP)){alert('كلمة السر الحالية غير صحيحة');return;}
+  var newP=prompt('كلمة السر الجديدة (4 أحرف على الأقل):');
+  if(!newP||newP.length<4){alert('قصيرة جداً');return;}
+  var newP2=prompt('أكدي كلمة السر الجديدة:');
+  if(newP!==newP2){alert('غير متطابقتين');return;}
+  // Update in DB
+  try{
+    var newHash=hashPwd(newP);
+    var r=await fetch(SB_URL+'/rest/v1/qsl_users?username=eq.'+encodeURIComponent(currentUser.username),{
+      method:'PATCH',
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify({password_hash:newHash})
+    });
+    if(r.ok){
+      currentUser.password_hash=newHash;
+      localStorage.setItem('qsl_pwd',newHash);
+      logAction('تغيير كلمة السر','');
+      alert('✅ تم تغيير كلمة السر');
+    }else{
+      alert('فشل التغيير');
+    }
+  }catch(e){alert('خطأ في الاتصال');}
+}
+
 async function checkAuth(){
   await loadUsers();
   var savedUser=localStorage.getItem('qsl_user');
@@ -1326,6 +1355,7 @@ function updateUserUI(){
   if(!currentUser)return;
   document.getElementById('btn-logout').style.display='inline-flex';
   var disp=document.getElementById('user-display');if(disp){disp.style.display='inline-flex';disp.textContent='👤 '+currentUser.username+' ('+({admin:'أدمن',editor:'محرر',viewer:'مشاهد'}[currentUser.role]||currentUser.role)+')';}
+  document.getElementById('btn-pwd').style.display='inline-flex';
   // Log button visible to all
   document.getElementById('btn-log').style.display='inline-flex';
   // Users management only for admin
@@ -1430,6 +1460,64 @@ async function addUser(){
     rUserList();
     logAction('إضافة مستخدم',u+' ('+r+')');
   }
+}
+
+
+async function editUser(oldName){
+  var u=users.find(function(x){return x.username===oldName;});
+  if(!u)return;
+  var newName=prompt('الاسم الجديد:',oldName);
+  if(!newName)return;
+  newName=newName.trim().toLowerCase();
+  if(newName.length<2){alert('قصير');return;}
+  if(newName!==oldName&&users.find(function(x){return x.username===newName;})){alert('الاسم موجود');return;}
+  var newRole=prompt('الصلاحية (admin/editor/viewer):',u.role);
+  if(!newRole||['admin','editor','viewer'].indexOf(newRole)<0){alert('صلاحية غير صحيحة');return;}
+  var changePass=confirm('تغيير كلمة السر؟');
+  var newHash=u.password_hash;
+  if(changePass){
+    var newP=prompt('كلمة السر الجديدة (4 أحرف على الأقل):');
+    if(!newP||newP.length<4){alert('قصيرة');return;}
+    newHash=hashPwd(newP);
+  }
+  // If username changed, delete old and insert new
+  try{
+    if(newName!==oldName){
+      // Delete old
+      await fetch(SB_URL+'/rest/v1/qsl_users?username=eq.'+encodeURIComponent(oldName),{
+        method:'DELETE',
+        headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
+      });
+      // Insert new
+      var r=await fetch(SB_URL+'/rest/v1/qsl_users',{
+        method:'POST',
+        headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=representation'},
+        body:JSON.stringify({username:newName,role:newRole,password_hash:newHash})
+      });
+      if(!r.ok){alert('فشل');return;}
+    }else{
+      // Just update
+      var r=await fetch(SB_URL+'/rest/v1/qsl_users?username=eq.'+encodeURIComponent(oldName),{
+        method:'PATCH',
+        headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+        body:JSON.stringify({role:newRole,password_hash:newHash})
+      });
+      if(!r.ok){alert('فشل');return;}
+    }
+    // If editing self, update local
+    if(currentUser.username===oldName){
+      currentUser.username=newName;
+      currentUser.role=newRole;
+      currentUser.password_hash=newHash;
+      localStorage.setItem('qsl_user',newName);
+      localStorage.setItem('qsl_pwd',newHash);
+      updateUserUI();
+    }
+    await loadUsers();
+    rUserList();
+    logAction('تعديل مستخدم',oldName+' → '+newName);
+    toast('تم التحديث');
+  }catch(e){alert('خطأ');}
 }
 
 async function delUser(u){
