@@ -6,6 +6,7 @@
 <title>QSL Matchday Staff</title>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{--m:#6B0F2A;--m2:#8B1535;--gold:#C9A84C;--gl:#FBF3DC;--gd:#9A7A30;--navy:#0A1628;--navy2:#162952;--teal:#0D5C4E;--bg:#F2EDE8;--card:#FFF;--text:#1A1A1A;--muted:#888;--border:#E0D8D0;--gr:#1B6B35;--grl:#EAF5EE;--bl:#0D4EA6;--rd:#A32020;--rdl:#FDECEA;--sh:0 2px 16px rgba(0,0,0,.07)}
@@ -1109,12 +1110,48 @@ function saveP(){
 function delP(){if(!ePID)return;const p=staff.find(x=>x.id===ePID);if(!p||!confirm(`حذف "${p.name}"؟`))return;staff=staff.filter(x=>x.id!==ePID);seasons.forEach(s=>{if(s.records)delete s.records[ePID]});cMd('ap');rGrid();bRNav();if(cView==='stf')rStf();toast('🗑️ تم الحذف');sched();}
 
 function makeRTL(ws){
-  // Set RTL via Workbook view
-  ws['!views']=[{RTL:true}];
+  ws['!views']=[{RTL:1}];
   return ws;
 }
 
-function exportExcel(){
+// Force RTL by post-processing the XLSX file using JSZip
+async function writeFileRTL(workbook,filename){
+  try{
+    // Generate XLSX as binary
+    const wbout=XLSX.write(workbook,{bookType:'xlsx',type:'array',compression:true});
+    // Open as ZIP
+    const zip=await JSZip.loadAsync(wbout);
+    // Modify each sheet XML to add rightToLeft="1"
+    const sheetFiles=Object.keys(zip.files).filter(function(n){return n.match(/^xl\/worksheets\/sheet\d+\.xml$/);});
+    for(const sheetFile of sheetFiles){
+      let content=await zip.file(sheetFile).async('string');
+      // If sheetView exists without rightToLeft, add it
+      if(/<sheetView[^>]*\/>/.test(content)){
+        content=content.replace(/<sheetView([^>]*)\/>/,'<sheetView$1 rightToLeft="1"/>');
+      }else if(/<sheetView[^>]*>/.test(content)){
+        content=content.replace(/<sheetView([^>]*)>/,'<sheetView$1 rightToLeft="1">');
+      }else{
+        // Add sheetViews block before sheetData
+        content=content.replace('<sheetData','<sheetViews><sheetView rightToLeft="1" workbookViewId="0"/></sheetViews><sheetData');
+      }
+      // Clean any duplicate rightToLeft attributes
+      content=content.replace(/rightToLeft="1"\s+rightToLeft="1"/g,'rightToLeft="1"');
+      zip.file(sheetFile,content);
+    }
+    // Generate the modified file
+    const blob=await zip.generateAsync({type:'blob'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;a.download=filename;
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }catch(e){
+    console.error('RTL write failed:',e);
+    XLSX.writeFile(workbook,filename);
+  }
+}
+
+async function exportExcel(){
   try{
     const s=cs(),comps=getComps(),wb=XLSX.utils.book_new();
     if(!s){alert('لا يوجد موسم نشط');return;}
@@ -1175,7 +1212,7 @@ function exportExcel(){
     wkWs['!merges']=[{s:{r:0,c:0},e:{r:0,c:3}}];
     XLSX.utils.book_append_sheet(wb,wkWs,'الكشف الأسبوعي');
     
-    XLSX.writeFile(wb,'كشف_العاملين_'+(s.name||'')+'_'+new Date().toISOString().slice(0,10)+'.xlsx');
+    await writeFileRTL(wb,'كشف_العاملين_'+(s.name||'')+'_'+new Date().toISOString().slice(0,10)+'.xlsx');
     toast('✅ تم تصدير Excel');
   }catch(e){
     console.error(e);
@@ -1183,20 +1220,20 @@ function exportExcel(){
   }
 }
 
-function exportExcelSum(){
+async function exportExcelSum(){
   const s=cs(),comps=getComps(),wb=XLSX.utils.book_new();
   const compCols=comps.map(c=>c.name);
   const data=[['#','الاسم','القسم',...compCols,'المجموع','رقم الهاتف']];
   staff.map(p=>({...p,tot:pTot(p.id)})).sort((a,b)=>b.tot-a.tot).forEach((p,i)=>data.push([i+1,p.name,p.dept,...comps.map(c=>pC(p.id,c.id)),p.tot,p.phone||'']));
   const ws=XLSX.utils.aoa_to_sheet(data);makeRTL(ws);XLSX.utils.book_append_sheet(wb,ws,'ملخص الموسم');
-  XLSX.writeFile(wb,`ملخص_العاملين_${s?.name||''}.xlsx`);toast('✅ تم تصدير Excel');
+  await writeFileRTL(wb,`ملخص_العاملين_${s?.name||''}.xlsx`);toast('✅ تم تصدير Excel');
 }
 
-function exportExcelRec(){
+async function exportExcelRec(){
   const wb=XLSX.utils.book_new();
     // Force RTL at workbook level
     wb.Workbook=wb.Workbook||{};
-    wb.Workbook.Views=[{RTL:true}];
+    wb.Workbook.Views=[{RTL:1}];
   const data=[['الاسم','القسم',...seasons.map(s=>s.name),'المجموع الكلي']];
   staff.map(p=>({...p,c:career(p.id)})).sort((a,b)=>b.c-a.c).forEach(p=>data.push([p.name,p.dept,...seasons.map(s=>pTot(p.id,s.id)),p.c]));
   const ws=XLSX.utils.aoa_to_sheet(data);makeRTL(ws);XLSX.utils.book_append_sheet(wb,ws,'السجل الكامل');
