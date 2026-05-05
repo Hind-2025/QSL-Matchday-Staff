@@ -175,14 +175,38 @@ button,select,input{font-family:'Cairo',sans-serif}
 .phead{display:none;text-align:center;margin-bottom:12px}
 .phead h2{font-size:16px;font-weight:900;color:var(--m)}
 .phead p{font-size:11px;color:var(--muted);margin-top:2px}
+
+.viewer-mode .cbtn,.viewer-mode .btn:not(.bn):not(.bp):not(.bdel),.viewer-mode #ns-btn,.viewer-mode .crdhdr button:not(#btn-logout):not(#btn-users){display:none!important;}
 </style>
 </head>
 <body>
 
+<div id="login-overlay" style="display:none;position:fixed;inset:0;background:linear-gradient(135deg,#6B0F2A 0%,#8B1A37 100%);z-index:99999;justify-content:center;align-items:center;font-family:'Cairo',sans-serif">
+  <div style="background:#fff;border-radius:18px;padding:40px;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,.3);direction:rtl;margin:20px">
+    <div style="text-align:center;margin-bottom:24px">
+      <div style="font-size:48px;margin-bottom:8px">⚽</div>
+      <div style="font-size:22px;font-weight:900;color:#6B0F2A">QSL Matchday Staff</div>
+      <div style="font-size:13px;color:#888;margin-top:4px">تسجيل الدخول</div>
+    </div>
+    <div id="login-msg" style="margin-bottom:14px"></div>
+    <div style="margin-bottom:14px">
+      <label style="font-size:13px;font-weight:700;color:#6B0F2A;display:block;margin-bottom:6px">اسم المستخدم</label>
+      <input type="text" id="login-user" placeholder="اسم المستخدم" style="width:100%;padding:11px 14px;border:1.5px solid #E0D8D0;border-radius:10px;font-size:14px;direction:ltr;text-align:center;font-family:inherit;box-sizing:border-box;margin-bottom:10px">
+      <input type="password" id="login-pass" placeholder="كلمة السر" onkeydown="if(event.key==='Enter')doLogin()" style="width:100%;padding:11px 14px;border:1.5px solid #E0D8D0;border-radius:10px;font-size:14px;direction:ltr;text-align:center;font-family:inherit;box-sizing:border-box">
+    </div>
+    <button onclick="doLogin()" style="width:100%;padding:12px;border-radius:10px;border:none;background:#6B0F2A;color:#fff;font-size:14px;font-weight:900;cursor:pointer;font-family:inherit">دخول</button>
+    <div id="setup-admin" style="display:none;margin-top:20px;padding-top:20px;border-top:1px solid #eee;text-align:center">
+      <div style="font-size:12px;color:#888;margin-bottom:10px">هذه أول مرة — قومي بإعداد حساب الأدمن</div>
+      <button onclick="setupAdmin()" style="padding:10px 20px;border-radius:10px;border:1.5px solid #6B0F2A;background:#fff;color:#6B0F2A;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">إعداد أدمن جديد</button>
+    </div>
+  </div>
+</div>
+
+
 <div class="sync no-print">
   <span class="dot" id="sdot"></span>
   <span id="stxt">جاري التحميل...</span>
-  <button class="sbtn" onclick="doSync()">↻ تحديث</button>
+  <button class="sbtn" onclick="doSync()">↻ تحديث</button><button class="sbtn" onclick="openUserMgr()" id="btn-users" style="display:none">👥 المستخدمون</button><button class="sbtn" onclick="showLog()" id="btn-log" style="display:none">📋 السجل</button><span id="user-display" style="display:none;font-size:12px;color:#FFD700;margin:0 8px;font-weight:700"></span><button class="sbtn" onclick="doLogout()" id="btn-logout" style="display:none">↪ خروج</button>
   <span id="slast" style="color:rgba(255,255,255,.3);margin-right:6px"></span>
 </div>
 
@@ -218,7 +242,7 @@ button,select,input{font-family:'Cairo',sans-serif}
     <div class="dept-bar" id="dbar-g"></div>
     <div class="tbright">
       <div class="sw"><span class="si">🔍</span><input id="gsrch" placeholder="بحث بالاسم..." oninput="rGrid()"></div>
-      <button class="btn bsm bn no-print" onclick="exportExcel()">📊 Excel</button>
+      <button class="btn bsm bn no-print" onclick="exportExcel()">📊 Excel</button><button class="btn bsm" onclick="exportBackup()" title="نسخة احتياطية">💾</button>
       <button class="btn bsm bn no-print" onclick="window.print()">🖨️ PDF</button>
       <button class="btn bsm bp no-print" onclick="oAddP()">+ موظف</button>
     </div>
@@ -322,6 +346,26 @@ button,select,input{font-family:'Cairo',sans-serif}
 </div>
 
 <div class="ov" id="m-dept" style="display:none" onclick="if(event.target===this)cMd('dept')"><div class="md"><h3 id="dmt">قسم جديد</h3><div id="msg-dept"></div><div class="fr"><div class="fl"><label>مفتاح القسم</label><input id="dept-k" placeholder="مثال: المصورون"></div></div><div class="fr"><div class="fl"><label>اسم العرض</label><input id="dept-l" placeholder="مثال: قسم التصوير"></div></div><div class="mbs"><button class="btn bdel bsm" id="bdel-dept" onclick="delDept()" style="display:none;margin-left:auto">حذف</button><button class="btn" onclick="cMd('dept')">الغاء</button><button class="btn bp" onclick="saveDept()">حفظ</button></div></div></div>
+
+<div class="ov" id="m-users" style="display:none" onclick="if(event.target===this)cMd('users')">
+  <div class="md" style="max-width:520px">
+    <h3>👥 إدارة المستخدمين</h3>
+    <div id="msg-users"></div>
+    <div class="fr">
+      <div class="fl" style="flex:2"><label>اسم المستخدم</label><input id="new-user" placeholder="مثال: ahmed"></div>
+      <div class="fl"><label>الصلاحية</label><select id="new-role"><option value="editor">محرر</option><option value="viewer">مشاهد</option><option value="admin">أدمن</option></select></div>
+    </div>
+    <div class="fr">
+      <div class="fl"><label>كلمة السر (تعطيها للمستخدم)</label><input type="text" id="new-pass" placeholder="4 أحرف على الأقل"></div>
+    </div>
+    <button class="btn bp bsm" onclick="addUser()">+ إضافة</button>
+    <div id="users-list" style="margin-top:16px;max-height:300px;overflow-y:auto"></div>
+    <div class="mbs">
+      <button class="btn" onclick="cMd('users')">إغلاق</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast" style="position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--navy);color:var(--gold);padding:12px 22px;border-radius:12px;font-size:14px;font-weight:700;z-index:1000;transition:transform .3s;box-shadow:0 6px 24px rgba(0,0,0,.3);pointer-events:none"></div>
 
 <script>
@@ -627,7 +671,9 @@ async function cloudSave(){
 
 function sched(){clearTimeout(svT);svT=setTimeout(function(){cloudSave();svT=null;},400);}
 async function doSync(){const ok=await cloudLoad();if(ok)rebuildAll();}
-setInterval(async()=>{if(document.visibilityState==='visible'&&!svT){const ok=await cloudLoad();if(ok)rebuildAll();}},30000);
+setInterval(async()=>{
+  await checkAuth();
+  if(document.visibilityState==='visible'&&!svT){const ok=await cloudLoad();if(ok)rebuildAll();}},30000);
 
 function uid(){return 'x'+Date.now().toString(36)+Math.random().toString(36).slice(2,5)}
 function cs(){return seasons.find(s=>s.id===cSID)||seasons[0]}
@@ -722,6 +768,9 @@ function setV(pid,delta){
   });
   // Schedule save (debounced)
   sched();
+  // Log action
+  var person=staff.find(function(x){return x.id===pid;});
+  if(person)logAction(delta>0?'إضافة تعيين':'إزالة تعيين',person.name+' — '+cComp+' '+cRnd);
 }
 
 function updateRHdr(){
@@ -1065,9 +1114,9 @@ function exportExcel(){
   comps.forEach(comp=>(comp.rounds||[]).forEach(r=>{allK.push(rKey(comp.id,r));allL.push(`${comp.name}-${r}`);}));
   const data=[['الاسم','القسم',...allL,'المجموع','رقم الهاتف','البريد الإلكتروني','ملاحظات']];
   staff.forEach(p=>data.push([p.name,p.dept,...allK.map(k=>s?.records?.[p.id]?.[k]||0),pTot(p.id),p.phone||'',p.email||'',p.notes||'']));
-  const ws=XLSX.utils.aoa_to_sheet(data);ws['!cols']=[{wch:22},{wch:20},...allL.map(()=>({wch:7})),{wch:10},{wch:14},{wch:28},{wch:16}];
+  const ws=XLSX.utils.aoa_to_sheet(data);makeRTL(ws);ws['!cols']=[{wch:22},{wch:20},...allL.map(()=>({wch:7})),{wch:10},{wch:14},{wch:28},{wch:16}];
   XLSX.utils.book_append_sheet(wb,ws,'كشف الموسم');
-  DEPTS.forEach(d=>{const fl=staff.filter(p=>p.dept===d.k);const dat=[['الاسم',...allL,'المجموع','رقم الهاتف']];fl.forEach(p=>dat.push([p.name,...allK.map(k=>s?.records?.[p.id]?.[k]||0),pTot(p.id),p.phone||'']));const w=XLSX.utils.aoa_to_sheet(dat);XLSX.utils.book_append_sheet(wb,w,d.l.slice(0,31));});
+  DEPTS.forEach(d=>{const fl=staff.filter(p=>p.dept===d.k);const dat=[['الاسم',...allL,'المجموع','رقم الهاتف']];fl.forEach(p=>dat.push([p.name,...allK.map(k=>s?.records?.[p.id]?.[k]||0),pTot(p.id),p.phone||'']));const w=XLSX.utils.aoa_to_sheet(dat);makeRTL(w);XLSX.utils.book_append_sheet(wb,w,d.l.slice(0,31));});
   XLSX.writeFile(wb,`كشف_العاملين_${s?.name||''}_${new Date().toISOString().slice(0,10)}.xlsx`);toast('✅ تم تصدير Excel');
 }
 
@@ -1076,7 +1125,7 @@ function exportExcelSum(){
   const compCols=comps.map(c=>c.name);
   const data=[['#','الاسم','القسم',...compCols,'المجموع','رقم الهاتف']];
   staff.map(p=>({...p,tot:pTot(p.id)})).sort((a,b)=>b.tot-a.tot).forEach((p,i)=>data.push([i+1,p.name,p.dept,...comps.map(c=>pC(p.id,c.id)),p.tot,p.phone||'']));
-  const ws=XLSX.utils.aoa_to_sheet(data);XLSX.utils.book_append_sheet(wb,ws,'ملخص الموسم');
+  const ws=XLSX.utils.aoa_to_sheet(data);makeRTL(ws);XLSX.utils.book_append_sheet(wb,ws,'ملخص الموسم');
   XLSX.writeFile(wb,`ملخص_العاملين_${s?.name||''}.xlsx`);toast('✅ تم تصدير Excel');
 }
 
@@ -1084,7 +1133,7 @@ function exportExcelRec(){
   const wb=XLSX.utils.book_new();
   const data=[['الاسم','القسم',...seasons.map(s=>s.name),'المجموع الكلي']];
   staff.map(p=>({...p,c:career(p.id)})).sort((a,b)=>b.c-a.c).forEach(p=>data.push([p.name,p.dept,...seasons.map(s=>pTot(p.id,s.id)),p.c]));
-  const ws=XLSX.utils.aoa_to_sheet(data);XLSX.utils.book_append_sheet(wb,ws,'السجل الكامل');
+  const ws=XLSX.utils.aoa_to_sheet(data);makeRTL(ws);XLSX.utils.book_append_sheet(wb,ws,'السجل الكامل');
   XLSX.writeFile(wb,'سجل_العاملين_كل_المواسم.xlsx');toast('✅ تم تصدير Excel');
 }
 
@@ -1112,11 +1161,286 @@ function saveDept(){
   if(!k||!l){document.getElementById('msg-dept').innerHTML='<div class="msgtxt mer">ادخل الاسمين</div>';return;}
   if(eDK){var d=DEPTS.find(function(x){return x.k===eDK;});if(d){var ok=d.k;d.k=k;d.l=l;staff.forEach(function(p){if(p.dept===ok)p.dept=k;});}}
   else{if(DEPTS.find(function(x){return x.k===k;})){document.getElementById('msg-dept').innerHTML='<div class="msgtxt mer">القسم موجود</div>';return;}var c=CLRS[DEPTS.length%CLRS.length];DEPTS.push({k:k,l:l,bg:c.bg,tc:c.tc});}
-  refreshDM();cMd('dept');rDeptMgr();if(cView==='stf')rStf();sched();toast('تم حفظ القسم');
+  refreshDM();cMd('dept');rDeptMgr();if(cView==='stf')rStf();sched();logAction(eDK?'تعديل قسم':'إضافة قسم',k+' ('+l+')');toast('تم حفظ القسم');
 }
-function delDeptConfirm(k){var d=DEPTS.find(function(x){return x.k===k;});if(!d||!confirm('حذف قسم '+d.l+'؟'))return;DEPTS=DEPTS.filter(function(x){return x.k!==k;});refreshDM();rDeptMgr();if(cView==='stf')rStf();sched();toast('تم حذف القسم');}
+function delDeptConfirm(k){var d=DEPTS.find(function(x){return x.k===k;});if(!d||!confirm('حذف قسم '+d.l+'؟'))return;DEPTS=DEPTS.filter(function(x){return x.k!==k;});refreshDM();rDeptMgr();if(cView==='stf')rStf();sched();logAction('حذف قسم',d.l);toast('تم حذف القسم');}
 function delDept(){if(eDK)delDeptConfirm(eDK);cMd('dept');}
+
+function exportBackup(){
+  try{
+    var data={
+      version:'1.0',
+      exportDate:new Date().toISOString(),
+      staff:staff,
+      seasons:seasons,
+      cSID:cSID,
+      deptOverride:deptOverride,
+      depts:DEPTS
+    };
+    var blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a');
+    a.href=url;
+    a.download='QSL_Backup_'+new Date().toISOString().slice(0,10)+'.json';
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast('💾 تم تنزيل النسخة الاحتياطية');
+  }catch(e){console.error(e);alert('فشل التصدير');}
+}
+function importBackup(){
+  var inp=document.createElement('input');
+  inp.type='file';inp.accept='.json';
+  inp.onchange=function(e){
+    var f=e.target.files[0];if(!f)return;
+    if(!confirm('سيتم استبدال كل البيانات الحالية بالبيانات من الملف. هل أنت متأكدة؟'))return;
+    var r=new FileReader();
+    r.onload=function(ev){
+      try{
+        var d=JSON.parse(ev.target.result);
+        if(d.staff)staff=d.staff;
+        if(d.seasons){seasons=d.seasons;seasons.forEach(function(s){if(!s.comps)s.comps=JSON.parse(JSON.stringify(DEF_COMPS));});}
+        if(d.cSID&&seasons.find(function(s){return s.id===d.cSID;}))cSID=d.cSID;
+        if(d.deptOverride)deptOverride=d.deptOverride;
+        if(d.depts&&d.depts.length){DEPTS=d.depts;refreshDM();}
+        rebuildAll();sched();toast('✅ تم استيراد البيانات');
+      }catch(err){alert('ملف غير صحيح');}
+    };
+    r.readAsText(f);
+  };
+  inp.click();
+}
+
 function rebuildAll(){rDeptMgr();bSel();bRNav();rRHdr();rGrid();if(cView==='sum')rSum();if(cView==='rec')rRec();if(cView==='rnds')rRndMgr();if(cView==='stf')rStf();}
+
+
+// === Authentication System ===
+var currentUser=null;
+var users=[];
+
+async function loadUsers(){
+  try{
+    var r=await fetch(SB_URL+'/rest/v1/qsl_users?select=*',{
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
+    });
+    if(r.ok)users=await r.json();
+  }catch(e){console.warn('Cannot load users:',e);}
+}
+
+async function saveUserDB(u){
+  try{
+    var r=await fetch(SB_URL+'/rest/v1/qsl_users',{
+      method:'POST',
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=representation'},
+      body:JSON.stringify(u)
+    });
+    return r.ok;
+  }catch(e){return false;}
+}
+
+async function deleteUserDB(username){
+  try{
+    var r=await fetch(SB_URL+'/rest/v1/qsl_users?username=eq.'+encodeURIComponent(username),{
+      method:'DELETE',
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
+    });
+    return r.ok;
+  }catch(e){return false;}
+}
+
+function showLogin(){document.getElementById('login-overlay').style.display='flex';}
+function hideLogin(){document.getElementById('login-overlay').style.display='none';}
+
+
+async function logAction(action, details){
+  if(!currentUser)return;
+  try{
+    await fetch(SB_URL+'/rest/v1/qsl_log',{
+      method:'POST',
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify({username:currentUser.username,action:action,details:details||''})
+    });
+  }catch(e){}
+}
+
+async function loadLog(){
+  try{
+    var r=await fetch(SB_URL+'/rest/v1/qsl_log?select=*&order=created_at.desc&limit=200',{
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
+    });
+    if(r.ok)return await r.json();
+  }catch(e){}
+  return [];
+}
+
+async function showLog(){
+  var logs=await loadLog();
+  var html='<h3>📋 سجل العمليات</h3><div id="log-list" style="max-height:500px;overflow-y:auto;margin-top:14px">';
+  if(logs.length===0){
+    html+='<div style="text-align:center;padding:30px;color:#888">لا توجد عمليات</div>';
+  }else{
+    logs.forEach(function(l){
+      var d=new Date(l.created_at);
+      var dStr=d.toLocaleString('ar-EG',{dateStyle:'short',timeStyle:'short'});
+      html+='<div style="padding:10px;border:1px solid #E0D8D0;border-radius:8px;margin-bottom:6px;background:#FAF6F1">'
+        +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'
+        +'<span style="font-weight:700;color:#6B0F2A">'+l.username+'</span>'
+        +'<span style="font-size:11px;color:#888">'+dStr+'</span></div>'
+        +'<div style="font-size:13px">'+l.action+(l.details?' — '+l.details:'')+'</div></div>';
+    });
+  }
+  html+='</div><div class="mbs"><button class="btn" onclick="cMd(\'log\')">إغلاق</button></div>';
+  var modal=document.getElementById('m-log');
+  if(!modal){
+    modal=document.createElement('div');
+    modal.className='ov';modal.id='m-log';modal.style.display='none';
+    modal.onclick=function(e){if(e.target===modal)cMd('log');};
+    var inner=document.createElement('div');inner.className='md';inner.style.maxWidth='600px';
+    modal.appendChild(inner);
+    document.body.appendChild(modal);
+  }
+  modal.firstChild.innerHTML=html;
+  oMd('log');
+}
+
+async function checkAuth(){
+  await loadUsers();
+  var savedUser=localStorage.getItem('qsl_user');
+  var savedPwd=localStorage.getItem('qsl_pwd');
+  if(savedUser&&savedPwd){
+    var u=users.find(function(x){return x.username===savedUser;});
+    if(u&&u.password_hash===savedPwd){
+      currentUser=u;hideLogin();updateUserUI();return true;
+    }
+    // Saved auth invalid
+    localStorage.removeItem('qsl_user');
+    localStorage.removeItem('qsl_pwd');
+  }
+  if(users.length===0){
+    document.getElementById('setup-admin').style.display='block';
+  }
+  showLogin();
+  return false;
+}
+
+function updateUserUI(){
+  if(!currentUser)return;
+  document.getElementById('btn-logout').style.display='inline-flex';
+  var disp=document.getElementById('user-display');if(disp){disp.style.display='inline-flex';disp.textContent='👤 '+currentUser.username+' ('+({admin:'أدمن',editor:'محرر',viewer:'مشاهد'}[currentUser.role]||currentUser.role)+')';}
+  // Log button visible to all
+  document.getElementById('btn-log').style.display='inline-flex';
+  // Users management only for admin
+  if(currentUser.role==='admin'){
+    document.getElementById('btn-users').style.display='inline-flex';
+  }
+  if(currentUser.role==='viewer'){
+    document.body.classList.add('viewer-mode');
+  }
+}
+
+function hashPwd(p){
+  var h=0;for(var i=0;i<p.length;i++){h=((h<<5)-h)+p.charCodeAt(i);h|=0;}
+  return String(h);
+}
+async function doLogin(){
+  var u=document.getElementById('login-user').value.trim().toLowerCase();
+  var p=document.getElementById('login-pass').value;
+  if(!u||!p){
+    document.getElementById('login-msg').innerHTML='<div style="background:#FEE;color:#A32020;padding:8px;border-radius:8px;font-size:13px">أدخلي اسم المستخدم وكلمة السر</div>';
+    return;
+  }
+  await loadUsers();
+  var user=users.find(function(x){return x.username===u;});
+  if(!user||user.password_hash!==hashPwd(p)){
+    document.getElementById('login-msg').innerHTML='<div style="background:#FEE;color:#A32020;padding:8px;border-radius:8px;font-size:13px">اسم مستخدم أو كلمة سر غير صحيحة</div>';
+    return;
+  }
+  currentUser=user;
+  localStorage.setItem('qsl_user',u);
+  localStorage.setItem('qsl_pwd',hashPwd(p));
+  hideLogin();
+  updateUserUI();
+  logAction('تسجيل دخول','');
+  if(typeof rebuildAll==='function')rebuildAll();
+}
+
+async function setupAdmin(){
+  var u=prompt('اسم الأدمن (سهل وقصير، مثل: hind):');
+  if(!u)return;
+  u=u.trim().toLowerCase();
+  if(u.length<2){alert('قصير جداً');return;}
+  var p=prompt('كلمة السر للأدمن (4 أحرف على الأقل):');
+  if(!p||p.length<4){alert('كلمة السر قصيرة');return;}
+  var p2=prompt('أكدي كلمة السر:');
+  if(p!==p2){alert('كلمتا السر غير متطابقتان');return;}
+  var admin={username:u,role:'admin',password_hash:hashPwd(p)};
+  if(await saveUserDB(admin)){
+    users.push(admin);
+    currentUser=admin;
+    localStorage.setItem('qsl_user',u);
+    localStorage.setItem('qsl_pwd',hashPwd(p));
+    hideLogin();
+    updateUserUI();
+    alert('✅ تم إنشاء الأدمن: '+u+'\nاحفظي كلمة السر جيداً!');
+    if(typeof rebuildAll==='function')rebuildAll();
+  }else{
+    alert('فشل — تحققي من Supabase');
+  }
+}
+
+function doLogout(){
+  if(!confirm('تسجيل الخروج؟'))return;
+  localStorage.removeItem('qsl_user');
+  localStorage.removeItem('qsl_pwd');
+  location.reload();
+}
+
+function openUserMgr(){
+  if(!currentUser||currentUser.role!=='admin'){alert('للأدمن فقط');return;}
+  oMd('users');rUserList();
+}
+
+function rUserList(){
+  var el=document.getElementById('users-list');
+  if(!el)return;
+  el.innerHTML=users.map(function(u){
+    var lbl={admin:'أدمن',editor:'محرر',viewer:'مشاهد'}[u.role]||u.role;
+    var clr={admin:'#6B0F2A',editor:'#1B6B35',viewer:'#888'}[u.role]||'#888';
+    var canDel=u.username!==currentUser.username;
+    return '<div style="display:flex;align-items:center;gap:10px;padding:10px;border:1px solid #E0D8D0;border-radius:8px;margin-bottom:6px;background:#FAF6F1">'
+      +'<div style="flex:1"><div style="font-weight:700;font-size:14px">'+u.username+'</div>'
+      +'<div style="font-size:11px;color:'+clr+';font-weight:700">'+lbl+'</div></div>'
+      +(canDel?'<button onclick="delUser(\''+u.username+'\')" style="background:none;border:none;color:#A32020;cursor:pointer;font-size:16px">🗑️</button>':'')
+      +'</div>';
+  }).join('');
+}
+
+async function addUser(){
+  var u=document.getElementById('new-user').value.trim().toLowerCase();
+  var r=document.getElementById('new-role').value;
+  var p=document.getElementById('new-pass').value;
+  if(!u||u.length<2){document.getElementById('msg-users').innerHTML='<div class="msgtxt mer">اسم قصير</div>';return;}
+  if(!p||p.length<4){document.getElementById('msg-users').innerHTML='<div class="msgtxt mer">كلمة السر قصيرة (4+ أحرف)</div>';return;}
+  if(users.find(function(x){return x.username===u;})){document.getElementById('msg-users').innerHTML='<div class="msgtxt mer">موجود</div>';return;}
+  var newU={username:u,role:r,password_hash:hashPwd(p)};
+  if(await saveUserDB(newU)){
+    users.push(newU);
+    document.getElementById('new-user').value='';
+    document.getElementById('new-pass').value='';
+    document.getElementById('msg-users').innerHTML='<div class="msgtxt mok">✓ تم — أعطي '+u+' كلمة السر التي وضعتيها</div>';
+    rUserList();
+    logAction('إضافة مستخدم',u+' ('+r+')');
+  }
+}
+
+async function delUser(u){
+  if(!confirm('حذف '+u+'؟'))return;
+  if(await deleteUserDB(u)){
+    users=users.filter(function(x){return x.username!==u;});
+    rUserList();
+    toast('تم');
+    logAction('حذف مستخدم',u);
+  }
+}
 
 (async()=>{const ok=await cloudLoad();rebuildAll();if(!ok)await cloudSave();else toast('✅ تم التحميل من السحابة');})();
 </script>
