@@ -1108,16 +1108,79 @@ function saveP(){
 }
 function delP(){if(!ePID)return;const p=staff.find(x=>x.id===ePID);if(!p||!confirm(`حذف "${p.name}"؟`))return;staff=staff.filter(x=>x.id!==ePID);seasons.forEach(s=>{if(s.records)delete s.records[ePID]});cMd('ap');rGrid();bRNav();if(cView==='stf')rStf();toast('🗑️ تم الحذف');sched();}
 
+function makeRTL(ws){
+  if(!ws['!views'])ws['!views']=[];
+  ws['!views'][0]={RTL:true};
+  return ws;
+}
+
 function exportExcel(){
-  const s=cs(),comps=getComps(),wb=XLSX.utils.book_new();
-  const allK=[],allL=[];
-  comps.forEach(comp=>(comp.rounds||[]).forEach(r=>{allK.push(rKey(comp.id,r));allL.push(`${comp.name}-${r}`);}));
-  const data=[['الاسم','القسم',...allL,'المجموع','رقم الهاتف','البريد الإلكتروني','ملاحظات']];
-  staff.forEach(p=>data.push([p.name,p.dept,...allK.map(k=>s?.records?.[p.id]?.[k]||0),pTot(p.id),p.phone||'',p.email||'',p.notes||'']));
-  const ws=XLSX.utils.aoa_to_sheet(data);makeRTL(ws);ws['!cols']=[{wch:22},{wch:20},...allL.map(()=>({wch:7})),{wch:10},{wch:14},{wch:28},{wch:16}];
-  XLSX.utils.book_append_sheet(wb,ws,'كشف الموسم');
-  DEPTS.forEach(d=>{const fl=staff.filter(p=>p.dept===d.k);const dat=[['الاسم',...allL,'المجموع','رقم الهاتف']];fl.forEach(p=>dat.push([p.name,...allK.map(k=>s?.records?.[p.id]?.[k]||0),pTot(p.id),p.phone||'']));const w=XLSX.utils.aoa_to_sheet(dat);makeRTL(w);XLSX.utils.book_append_sheet(wb,w,d.l.slice(0,31));});
-  XLSX.writeFile(wb,`كشف_العاملين_${s?.name||''}_${new Date().toISOString().slice(0,10)}.xlsx`);toast('✅ تم تصدير Excel');
+  try{
+    const s=cs(),comps=getComps(),wb=XLSX.utils.book_new();
+    if(!s){alert('لا يوجد موسم نشط');return;}
+    const allK=[],allL=[];
+    comps.forEach(function(comp){(comp.rounds||[]).forEach(function(r){allK.push(rKey(comp.id,r));allL.push(comp.name+'-'+r);});});
+    
+    // Sheet 1: All staff with all rounds
+    const data=[['الاسم','القسم'].concat(allL).concat(['المجموع','الهاتف','البريد','ملاحظات'])];
+    staff.forEach(function(p){
+      const row=[p.name,p.dept];
+      allK.forEach(function(k){row.push(s.records&&s.records[p.id]&&s.records[p.id][k]||0);});
+      row.push(pTot(p.id));
+      row.push(p.phone||'');
+      row.push(p.email||'');
+      row.push(p.notes||'');
+      data.push(row);
+    });
+    const ws=XLSX.utils.aoa_to_sheet(data);
+    makeRTL(ws);
+    ws['!cols']=[{wch:22},{wch:18}].concat(allL.map(function(){return {wch:8};})).concat([{wch:10},{wch:14},{wch:24},{wch:18}]);
+    ws['!rows']=[{hpt:24}];
+    XLSX.utils.book_append_sheet(wb,ws,'كشف الموسم');
+    
+    // One sheet per department
+    DEPTS.forEach(function(d){
+      const fl=staff.filter(function(p){return p.dept===d.k;});
+      if(fl.length===0)return;
+      const dat=[['الاسم'].concat(allL).concat(['المجموع','الهاتف'])];
+      fl.forEach(function(p){
+        const row=[p.name];
+        allK.forEach(function(k){row.push(s.records&&s.records[p.id]&&s.records[p.id][k]||0);});
+        row.push(pTot(p.id));
+        row.push(p.phone||'');
+        dat.push(row);
+      });
+      const w=XLSX.utils.aoa_to_sheet(dat);
+      makeRTL(w);
+      w['!cols']=[{wch:22}].concat(allL.map(function(){return {wch:8};})).concat([{wch:10},{wch:14}]);
+      w['!rows']=[{hpt:24}];
+      const sheetName=d.l.slice(0,31).replace(/[\\/?*\[\]]/g,'');
+      XLSX.utils.book_append_sheet(wb,w,sheetName);
+    });
+    
+    // Weekly sheet — current round
+    const wkData=[['الجولة الحالية: '+(getComps().find(function(c){return c.id===cComp;})||{name:''}).name+' - '+cRnd]];
+    wkData.push([]);
+    wkData.push(['الاسم','القسم','عدد التعيينات','الهاتف']);
+    const wkKey=rKey(cComp,cRnd);
+    staff.forEach(function(p){
+      const v=s.records&&s.records[p.id]&&s.records[p.id][wkKey]||0;
+      if(v>0){
+        wkData.push([p.name,p.dept,v,p.phone||'']);
+      }
+    });
+    const wkWs=XLSX.utils.aoa_to_sheet(wkData);
+    makeRTL(wkWs);
+    wkWs['!cols']=[{wch:22},{wch:18},{wch:14},{wch:14}];
+    wkWs['!merges']=[{s:{r:0,c:0},e:{r:0,c:3}}];
+    XLSX.utils.book_append_sheet(wb,wkWs,'الكشف الأسبوعي');
+    
+    XLSX.writeFile(wb,'كشف_العاملين_'+(s.name||'')+'_'+new Date().toISOString().slice(0,10)+'.xlsx');
+    toast('✅ تم تصدير Excel');
+  }catch(e){
+    console.error(e);
+    alert('خطأ: '+e.message);
+  }
 }
 
 function exportExcelSum(){
