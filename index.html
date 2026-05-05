@@ -208,7 +208,7 @@ button,select,input{font-family:'Cairo',sans-serif}
   <span class="dot" id="sdot"></span>
   <span id="stxt">جاري التحميل...</span>
   <button class="sbtn" onclick="doSync()">↻ تحديث</button><button class="sbtn" onclick="openUserMgr()" id="btn-users" style="display:none">👥 المستخدمون</button><button class="sbtn" onclick="showLog()" id="btn-log" style="display:none">📋 السجل</button><span id="user-display" style="display:none;font-size:12px;color:#FFD700;margin:0 8px;font-weight:700"></span><button class="sbtn" onclick="changePwd()" id="btn-pwd" style="display:none">🔑 كلمة السر</button><button class="sbtn" onclick="doLogout()" id="btn-logout" style="display:none">↪ خروج</button>
-  <span id="slast" style="color:rgba(255,255,255,.3);margin-right:6px"></span>
+  <span id="slast" style="color:rgba(255,255,255,.3);margin-right:6px"></span> <span id="lastAction" style="color:#FFD700;margin-right:10px;font-size:11px"></span>
 </div>
 
 <div class="top no-print">
@@ -1321,6 +1321,31 @@ var currentUser=null;
 var users=[];
 
 var _usersLoadedAt=0;
+
+async function updateLastAction(){
+  try{
+    var r=await fetch(SB_URL+'/rest/v1/qsl_log?select=*&order=created_at.desc&limit=1',{
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
+    });
+    if(r.ok){
+      var logs=await r.json();
+      if(logs.length>0){
+        var l=logs[0];
+        var d=new Date(l.created_at);
+        var now=Date.now();
+        var diff=Math.floor((now-d.getTime())/1000);
+        var timeStr;
+        if(diff<60)timeStr='منذ ثوانٍ';
+        else if(diff<3600)timeStr='منذ '+Math.floor(diff/60)+' دقيقة';
+        else if(diff<86400)timeStr='منذ '+Math.floor(diff/3600)+' ساعة';
+        else timeStr=d.toLocaleDateString('ar');
+        var el=document.getElementById('lastAction');
+        if(el)el.textContent='✏️ آخر عملية: '+l.username+' — '+l.action+' ('+timeStr+')';
+      }
+    }
+  }catch(e){}
+}
+
 async function loadUsers(force){
   // Cache for 30s to avoid repeat calls
   if(!force&&users.length>0&&Date.now()-_usersLoadedAt<30000)return;
@@ -1365,6 +1390,7 @@ async function logAction(action, details){
       headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
       body:JSON.stringify({username:currentUser.username,action:action,details:details||''})
     });
+    setTimeout(updateLastAction,500);
   }catch(e){}
 }
 
@@ -1444,7 +1470,7 @@ async function checkAuth(){
   if(savedUser&&savedPwd){
     var u=users.find(function(x){return x.username===savedUser;});
     if(u&&u.password_hash===savedPwd){
-      currentUser=u;hideLogin();updateUserUI();return true;
+      currentUser=u;hideLogin();updateUserUI();updateLastAction();setInterval(updateLastAction,30000);return true;
     }
     // Saved auth invalid
     localStorage.removeItem('qsl_user');
@@ -1497,6 +1523,7 @@ async function doLogin(){
   hideLogin();
   updateUserUI();
   logAction('تسجيل دخول','');
+  updateLastAction();setInterval(updateLastAction,30000);
   if(typeof rebuildAll==='function')rebuildAll();
 }
 
