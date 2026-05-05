@@ -1378,6 +1378,7 @@ async function doLogin(){
     document.getElementById('login-msg').innerHTML='<div style="background:#FEE;color:#A32020;padding:8px;border-radius:8px;font-size:13px">أدخلي اسم المستخدم وكلمة السر</div>';
     return;
   }
+  document.getElementById('login-msg').innerHTML='<div style="background:#FFF8E1;color:#7B4F00;padding:8px;border-radius:8px;font-size:13px">جاري التحقق...</div>';
   await loadUsers();
   var user=users.find(function(x){return x.username===u;});
   if(!user||user.password_hash!==hashPwd(p)){
@@ -1421,7 +1422,9 @@ function doLogout(){
   if(!confirm('تسجيل الخروج؟'))return;
   localStorage.removeItem('qsl_user');
   localStorage.removeItem('qsl_pwd');
-  location.reload();
+  // Show login immediately, then reload
+  showLogin();
+  setTimeout(function(){location.reload();},100);
 }
 
 function openUserMgr(){
