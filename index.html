@@ -1109,8 +1109,8 @@ function saveP(){
 function delP(){if(!ePID)return;const p=staff.find(x=>x.id===ePID);if(!p||!confirm(`حذف "${p.name}"؟`))return;staff=staff.filter(x=>x.id!==ePID);seasons.forEach(s=>{if(s.records)delete s.records[ePID]});cMd('ap');rGrid();bRNav();if(cView==='stf')rStf();toast('🗑️ تم الحذف');sched();}
 
 function makeRTL(ws){
-  if(!ws['!views'])ws['!views']=[];
-  ws['!views'][0]={RTL:true};
+  // Set RTL via Workbook view
+  ws['!views']=[{RTL:true}];
   return ws;
 }
 
@@ -1194,6 +1194,9 @@ function exportExcelSum(){
 
 function exportExcelRec(){
   const wb=XLSX.utils.book_new();
+    // Force RTL at workbook level
+    wb.Workbook=wb.Workbook||{};
+    wb.Workbook.Views=[{RTL:true}];
   const data=[['الاسم','القسم',...seasons.map(s=>s.name),'المجموع الكلي']];
   staff.map(p=>({...p,c:career(p.id)})).sort((a,b)=>b.c-a.c).forEach(p=>data.push([p.name,p.dept,...seasons.map(s=>pTot(p.id,s.id)),p.c]));
   const ws=XLSX.utils.aoa_to_sheet(data);makeRTL(ws);XLSX.utils.book_append_sheet(wb,ws,'السجل الكامل');
