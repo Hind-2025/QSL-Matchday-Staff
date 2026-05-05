@@ -1217,12 +1217,15 @@ function rebuildAll(){rDeptMgr();bSel();bRNav();rRHdr();rGrid();if(cView==='sum'
 var currentUser=null;
 var users=[];
 
-async function loadUsers(){
+var _usersLoadedAt=0;
+async function loadUsers(force){
+  // Cache for 30s to avoid repeat calls
+  if(!force&&users.length>0&&Date.now()-_usersLoadedAt<30000)return;
   try{
     var r=await fetch(SB_URL+'/rest/v1/qsl_users?select=*',{
       headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
     });
-    if(r.ok)users=await r.json();
+    if(r.ok){users=await r.json();_usersLoadedAt=Date.now();}
   }catch(e){console.warn('Cannot load users:',e);}
 }
 
@@ -1427,9 +1430,12 @@ function doLogout(){
   setTimeout(function(){location.reload();},100);
 }
 
-function openUserMgr(){
+async function openUserMgr(){
   if(!currentUser||currentUser.role!=='admin'){alert('للأدمن فقط');return;}
-  oMd('users');rUserList();
+  oMd('users');
+  rUserList(); // show cached immediately
+  await loadUsers(true); // refresh in background
+  rUserList();
 }
 
 function rUserList(){
@@ -1439,10 +1445,11 @@ function rUserList(){
     var lbl={admin:'أدمن',editor:'محرر',viewer:'مشاهد'}[u.role]||u.role;
     var clr={admin:'#6B0F2A',editor:'#1B6B35',viewer:'#888'}[u.role]||'#888';
     var canDel=u.username!==currentUser.username;
-    return '<div style="display:flex;align-items:center;gap:10px;padding:10px;border:1px solid #E0D8D0;border-radius:8px;margin-bottom:6px;background:#FAF6F1">'
+    return '<div style="display:flex;align-items:center;gap:8px;padding:10px;border:1px solid #E0D8D0;border-radius:8px;margin-bottom:6px;background:#FAF6F1">'
       +'<div style="flex:1"><div style="font-weight:700;font-size:14px">'+u.username+'</div>'
       +'<div style="font-size:11px;color:'+clr+';font-weight:700">'+lbl+'</div></div>'
-      +(canDel?'<button onclick="delUser(\''+u.username+'\')" style="background:none;border:none;color:#A32020;cursor:pointer;font-size:16px">🗑️</button>':'')
+      +'<button onclick="editUser(\''+u.username+'\')" style="background:none;border:none;color:#1B5E20;cursor:pointer;font-size:14px" title="تعديل">✏️</button>'
+      +(canDel?'<button onclick="delUser(\''+u.username+'\')" style="background:none;border:none;color:#A32020;cursor:pointer;font-size:16px" title="حذف">🗑️</button>':'')
       +'</div>';
   }).join('');
 }
