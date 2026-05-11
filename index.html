@@ -243,9 +243,9 @@ button,select,input{font-family:'Cairo',sans-serif}
     <div class="dept-bar" id="dbar-g"></div>
     <div class="tbright">
       <div class="sw"><span class="si">🔍</span><input id="gsrch" placeholder="بحث بالاسم..." oninput="rGrid()"></div>
-      <button class="btn bsm bn no-print" onclick="exportExcel()">📊 Excel</button><button class="btn bsm" onclick="exportBackup()" title="نسخة احتياطية">💾</button>
+      <button class="btn bsm bn no-print" onclick="exportExcel()">📊 Excel</button><button class="btn bsm" onclick="exportOfficial()" title="نموذج كشف" style="background:#1B5E20;color:#fff">📤 نموذج كشف</button><button class="btn bsm" onclick="importOfficial()" title="استيراد كشف" style="background:#0D47A1;color:#fff">📥 استيراد كشف</button><button class="btn bsm" onclick="exportBackup()" title="نسخة احتياطية">💾</button>
       <button class="btn bsm bn no-print" onclick="window.print()">🖨️ PDF</button>
-      <button class="btn bsm bp no-print" onclick="oAddP()">+ موظف</button>
+      
     </div>
   </div>
   <div class="stw" id="stbl"></div>
@@ -948,13 +948,21 @@ function rSum(){
   const df=DF.s,q=(document.getElementById('ssrch')?.value||'').toLowerCase().trim();
   const fl=staff.filter(p=>(!df||p.dept===df)&&(!q||p.name.includes(q)));
   const comps=getComps();
+  // Sort by dept (in DEPTS order), then by total descending
+  const deptOrder={};
+  DEPTS.forEach(function(d,i){deptOrder[d.k]=i;});
   const ws=fl.map(p=>{
     const obj={...p,tot:pTot(p.id)};
     comps.forEach(c=>obj['c_'+c.id]=pC(p.id,c.id));
     return obj;
-  }).sort((a,b)=>b.tot-a.tot);
+  }).sort((a,b)=>{
+    const dA=deptOrder[a.dept]!==undefined?deptOrder[a.dept]:999;
+    const dB=deptOrder[b.dept]!==undefined?deptOrder[b.dept]:999;
+    if(dA!==dB)return dA-dB;
+    return b.tot-a.tot;
+  });
   const mx=Math.max(...ws.map(x=>x.tot),1);
-  const med=['🥇','🥈','🥉'];
+  const med=[];
   // build header
   const compTH=comps.map(c=>`<th class="c">${c.name}</th>`).join('');
   const thead=`<thead><tr><th class="c" style="width:40px">#</th><th>الاسم</th><th>القسم</th>${compTH}<th class="c">المجموع</th><th style="min-width:110px">المشاركة</th><th>الهاتف</th></tr></thead>`;
@@ -970,9 +978,16 @@ function rSum(){
 
 function rRec(){
   bDB('dbar-r','r','rRec');
+  const deptOrder={};
+  DEPTS.forEach(function(d,i){deptOrder[d.k]=i;});
   const df=DF.r,q=(document.getElementById('rsrch')?.value||'').toLowerCase().trim();
   const fl=staff.filter(p=>(!df||p.dept===df)&&(!q||p.name.includes(q)));
-  const wc=fl.map(p=>({...p,c:career(p.id)})).sort((a,b)=>b.c-a.c);
+  const wc=fl.map(p=>({...p,c:career(p.id)})).sort((a,b)=>{
+    const dA=deptOrder[a.dept]!==undefined?deptOrder[a.dept]:999;
+    const dB=deptOrder[b.dept]!==undefined?deptOrder[b.dept]:999;
+    if(dA!==dB)return dA-dB;
+    return b.c-a.c;
+  });
   const mx=Math.max(...wc.map(x=>x.c),1);
   const sths=seasons.map(s=>`<th class="ths2">${s.name}</th>`).join('');
   const rows=wc.map((p)=>{
@@ -1107,7 +1122,19 @@ function saveP(){
   else{if(staff.find(x=>x.name===nm&&x.dept===dp)){sMg('msg-ap','er','الموظف موجود');return}staff.push({id:uid(),name:nm,dept:dp,phone:ph,email:em,notes:nt});cMd('ap');rGrid();bRNav();if(cView==='stf')rStf();toast('✅ تمت الإضافة');}
   sched();
 }
-function delP(){if(!ePID)return;const p=staff.find(x=>x.id===ePID);if(!p||!confirm(`حذف "${p.name}"؟`))return;staff=staff.filter(x=>x.id!==ePID);seasons.forEach(s=>{if(s.records)delete s.records[ePID]});cMd('ap');rGrid();bRNav();if(cView==='stf')rStf();toast('🗑️ تم الحذف');sched();}
+function delP(){
+  if(!ePID)return;
+  const p=staff.find(x=>x.id===ePID);
+  if(!p||!confirm('حذف "'+p.name+'" نهائياً؟'))return;
+  const pname=p.name;
+  staff=staff.filter(x=>x.id!==ePID);
+  seasons.forEach(function(s){if(s.records)delete s.records[ePID];});
+  if(deptOverride[ePID])delete deptOverride[ePID];
+  cMd('ap');rebuildAll();
+  toast('🗑️ تم الحذف');
+  sched();
+  logAction('حذف موظف',pname);
+}
 
 function makeRTL(ws){
   ws['!views']=[{RTL:1}];
@@ -1151,94 +1178,187 @@ async function writeFileRTL(workbook,filename){
   }
 }
 
-async function exportExcel(){
+
+
+
+async function exportOfficial(){
   try{
-    const s=cs(),comps=getComps(),wb=XLSX.utils.book_new();
+    const s=cs();
     if(!s){alert('لا يوجد موسم نشط');return;}
-    const allK=[],allL=[];
-    comps.forEach(function(comp){(comp.rounds||[]).forEach(function(r){allK.push(rKey(comp.id,r));allL.push(comp.name+'-'+r);});});
+    const wb=XLSX.utils.book_new();
+    wb.Workbook={Views:[{RTL:1}]};
     
-    // Sheet 1: All staff with all rounds
-    const data=[['الاسم','القسم'].concat(allL).concat(['المجموع','الهاتف','البريد','ملاحظات'])];
-    staff.forEach(function(p){
-      const row=[p.name,p.dept];
-      allK.forEach(function(k){row.push(s.records&&s.records[p.id]&&s.records[p.id][k]||0);});
-      row.push(pTot(p.id));
-      row.push(p.phone||'');
-      row.push(p.email||'');
-      row.push(p.notes||'');
-      data.push(row);
-    });
-    const ws=XLSX.utils.aoa_to_sheet(data);
-    makeRTL(ws);
-    ws['!cols']=[{wch:22},{wch:18}].concat(allL.map(function(){return {wch:8};})).concat([{wch:10},{wch:14},{wch:24},{wch:18}]);
-    ws['!rows']=[{hpt:24}];
-    XLSX.utils.book_append_sheet(wb,ws,'كشف الموسم');
+    const compName=(getComps().find(function(c){return c.id===cComp;})||{name:''}).name;
     
-    // One sheet per department
-    DEPTS.forEach(function(d){
-      const fl=staff.filter(function(p){return p.dept===d.k;});
-      if(fl.length===0)return;
-      const dat=[['الاسم'].concat(allL).concat(['المجموع','الهاتف'])];
-      fl.forEach(function(p){
-        const row=[p.name];
-        allK.forEach(function(k){row.push(s.records&&s.records[p.id]&&s.records[p.id][k]||0);});
-        row.push(pTot(p.id));
-        row.push(p.phone||'');
-        dat.push(row);
-      });
-      const w=XLSX.utils.aoa_to_sheet(dat);
-      makeRTL(w);
-      w['!cols']=[{wch:22}].concat(allL.map(function(){return {wch:8};})).concat([{wch:10},{wch:14}]);
-      w['!rows']=[{hpt:24}];
-      const sheetName=d.l.slice(0,31).replace(/[\\/?*\[\]]/g,'');
-      XLSX.utils.book_append_sheet(wb,w,sheetName);
-    });
-    
-    // Weekly sheet — current round
-    const wkData=[['الجولة الحالية: '+(getComps().find(function(c){return c.id===cComp;})||{name:''}).name+' - '+cRnd]];
+    const wkData=[];
+    wkData.push(['نموذج كشف العاملين - '+compName+' - الجولة '+cRnd]);
+    wkData.push(['الموسم: '+(s.name||'')]);
+    wkData.push(['تاريخ الإصدار: '+new Date().toLocaleDateString('ar-EG')]);
     wkData.push([]);
-    wkData.push(['الاسم','القسم','عدد التعيينات','الهاتف']);
-    const wkKey=rKey(cComp,cRnd);
-    staff.forEach(function(p){
-      const v=s.records&&s.records[p.id]&&s.records[p.id][wkKey]||0;
-      if(v>0){
-        wkData.push([p.name,p.dept,v,p.phone||'']);
-      }
-    });
+    wkData.push(['#','الاسم','القسم','رقم المباراة','عدد المباريات','الهاتف','ملاحظات']);
+    
+    // Add 30 empty rows for filling
+    for(let i=1;i<=30;i++){
+      wkData.push([i,'','','','','','']);
+    }
+    
     const wkWs=XLSX.utils.aoa_to_sheet(wkData);
     makeRTL(wkWs);
-    wkWs['!cols']=[{wch:22},{wch:18},{wch:14},{wch:14}];
-    wkWs['!merges']=[{s:{r:0,c:0},e:{r:0,c:3}}];
-    XLSX.utils.book_append_sheet(wb,wkWs,'الكشف الأسبوعي');
+    wkWs['!cols']=[{wch:5},{wch:25},{wch:20},{wch:15},{wch:15},{wch:15},{wch:25}];
+    wkWs['!merges']=[
+      {s:{r:0,c:0},e:{r:0,c:6}},
+      {s:{r:1,c:0},e:{r:1,c:6}},
+      {s:{r:2,c:0},e:{r:2,c:6}}
+    ];
+    XLSX.utils.book_append_sheet(wb,wkWs,'نموذج الكشف');
     
-    await writeFileRTL(wb,'كشف_العاملين_'+(s.name||'')+'_'+new Date().toISOString().slice(0,10)+'.xlsx');
-    toast('✅ تم تصدير Excel');
+    await writeFileRTL(wb,'نموذج_كشف_'+compName+'_'+cRnd+'_'+new Date().toISOString().slice(0,10)+'.xlsx');
+    toast('✅ تم تصدير نموذج الكشف');
+    logAction('تصدير نموذج كشف',compName+' '+cRnd);
   }catch(e){
     console.error(e);
     alert('خطأ: '+e.message);
   }
 }
 
-async function exportExcelSum(){
-  const s=cs(),comps=getComps(),wb=XLSX.utils.book_new();
-  const compCols=comps.map(c=>c.name);
-  const data=[['#','الاسم','القسم',...compCols,'المجموع','رقم الهاتف']];
-  staff.map(p=>({...p,tot:pTot(p.id)})).sort((a,b)=>b.tot-a.tot).forEach((p,i)=>data.push([i+1,p.name,p.dept,...comps.map(c=>pC(p.id,c.id)),p.tot,p.phone||'']));
-  const ws=XLSX.utils.aoa_to_sheet(data);makeRTL(ws);XLSX.utils.book_append_sheet(wb,ws,'ملخص الموسم');
-  await writeFileRTL(wb,`ملخص_العاملين_${s?.name||''}.xlsx`);toast('✅ تم تصدير Excel');
+function importOfficial(){
+  var inp=document.createElement('input');
+  inp.type='file';
+  inp.accept='.xlsx,.xls';
+  inp.onchange=function(e){
+    var f=e.target.files[0];
+    if(!f)return;
+    var r=new FileReader();
+    r.onload=function(ev){
+      try{
+        var data=new Uint8Array(ev.target.result);
+        var wb=XLSX.read(data,{type:'array'});
+        // Find weekly sheet
+        var sheetName=wb.SheetNames.find(function(n){return n.includes('أسبوعي')||n.includes('Weekly');})||wb.SheetNames[0];
+        var ws=wb.Sheets[sheetName];
+        var rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+        
+        // Find header row (look for row with "الاسم" and "عدد المباريات")
+        var headerRow=-1;
+        for(var i=0;i<rows.length;i++){
+          var r=rows[i].map(function(x){return String(x||'').trim();});
+          if(r.includes('الاسم')&&(r.includes('عدد المباريات')||r.includes('المباريات'))){
+            headerRow=i;break;
+          }
+        }
+        if(headerRow<0){
+          alert('لم يتم العثور على رؤوس الأعمدة\nتأكد من وجود أعمدة "الاسم" و "عدد المباريات"');
+          return;
+        }
+        
+        var headers=rows[headerRow].map(function(x){return String(x||'').trim();});
+        var nameCol=headers.indexOf('الاسم');
+        var deptCol=headers.indexOf('القسم');
+        var matchCol=headers.indexOf('رقم المباراة');
+        var countCol=headers.findIndex(function(h){return h==='عدد المباريات'||h==='المباريات';});
+        var phoneCol=headers.indexOf('الهاتف');
+        var notesCol=headers.indexOf('ملاحظات');
+        
+        if(nameCol<0||countCol<0){alert('أعمدة ناقصة');return;}
+        
+        // Confirm import
+        var key=rKey(cComp,cRnd);
+        var compName=(getComps().find(function(c){return c.id===cComp;})||{name:''}).name;
+        if(!confirm('استيراد البيانات إلى '+compName+' - الجولة '+cRnd+'؟'))return;
+        
+        var s=cs();
+        if(!s.records)s.records={};
+        var updated=0,added=0,errors=0;
+        var addedDepts=[];
+        var errorList=[];
+        var debugLog=[];
+        
+        for(var i=headerRow+1;i<rows.length;i++){
+          var row=rows[i];
+          var name=String(row[nameCol]||'').trim();
+          var count=parseInt(row[countCol])||0;
+          var deptL=String(row[deptCol]||'').trim();
+          var phone=phoneCol>=0?String(row[phoneCol]||'').trim():'';
+          var notes=notesCol>=0?String(row[notesCol]||'').trim():'';
+          
+          if(!name||count<=0)continue;
+          
+          // Find existing person (trim and normalize whitespace)
+          var nameTrim=name.replace(/\s+/g,' ').trim();
+          var person=staff.find(function(p){return p.name.replace(/\s+/g,' ').trim()===nameTrim;});
+          debugLog.push((i-headerRow)+'. '+nameTrim+' → '+(person?'موجود (id:'+person.id+', dept:'+person.dept+')':'جديد')+' [قسم Excel: '+deptL+'] [عدد: '+count+']');
+          
+          if(person){
+            // Update count
+            if(!s.records[person.id])s.records[person.id]={};
+            s.records[person.id][key]=count;
+            // Update phone/notes if provided
+            if(phone&&!person.phone)person.phone=phone;
+            if(notes&&!person.notes)person.notes=notes;
+            // Update department if specified and exists
+            if(deptL){
+              var newDept=DEPTS.find(function(d){return d.l===deptL||d.k===deptL;});
+              if(!newDept){
+                var clr=CLRS[DEPTS.length%CLRS.length];
+                newDept={k:deptL,l:deptL,bg:clr.bg,tc:clr.tc};
+                DEPTS.push(newDept);
+                refreshDM();
+                addedDepts.push(deptL);
+              }
+              person.dept=newDept.k;
+            }
+            updated++;
+          }else{
+            // New person - find dept by label, or create new dept
+            var dept=DEPTS.find(function(d){return d.l===deptL||d.k===deptL;});
+            if(!dept&&deptL){
+              // Auto-create new department
+              var clr=CLRS[DEPTS.length%CLRS.length];
+              dept={k:deptL,l:deptL,bg:clr.bg,tc:clr.tc};
+              DEPTS.push(dept);
+              refreshDM();
+              addedDepts.push(deptL);
+            }
+            if(!dept){
+              errors++;
+              errorList.push(name+' (قسم غير محدد)');
+              continue;
+            }
+            // Generate new ID using timestamp to avoid conflicts
+            var newId='p'+Date.now()+Math.floor(Math.random()*100);
+            var newPerson={id:newId,name:name,dept:dept.k,phone:phone,email:'',notes:notes};
+            staff.push(newPerson);
+            // Add count
+            s.records[newId]={};
+            s.records[newId][key]=count;
+            added++;
+          }
+        }
+        
+        rebuildAll();
+        sched();
+        logAction('استيراد كشف','تم تحديث '+updated+' وإضافة '+added);
+        
+        var msg='✅ نتائج الاستيراد:\n\n';
+        msg+='• تم تحديث: '+updated+' موظف\n';
+        msg+='• تمت إضافة: '+added+' موظف';
+        msg+='\n\n--- تفاصيل ---\n'+debugLog.slice(0,15).join('\n');
+        if(addedDepts.length>0)msg+='\n• أقسام جديدة: '+addedDepts.join('، ');
+        if(errors>0){
+          msg+='\n• أخطاء: '+errors+'\n   '+errorList.slice(0,5).join('\n   ');
+          if(errorList.length>5)msg+='\n   ...';
+        }
+        alert(msg);
+      }catch(err){
+        console.error(err);
+        alert('خطأ في قراءة الملف: '+err.message);
+      }
+    };
+    r.readAsArrayBuffer(f);
+  };
+  inp.click();
 }
 
-async function exportExcelRec(){
-  const wb=XLSX.utils.book_new();
-    // Force RTL at workbook level
-    wb.Workbook=wb.Workbook||{};
-    wb.Workbook.Views=[{RTL:1}];
-  const data=[['الاسم','القسم',...seasons.map(s=>s.name),'المجموع الكلي']];
-  staff.map(p=>({...p,c:career(p.id)})).sort((a,b)=>b.c-a.c).forEach(p=>data.push([p.name,p.dept,...seasons.map(s=>pTot(p.id,s.id)),p.c]));
-  const ws=XLSX.utils.aoa_to_sheet(data);makeRTL(ws);XLSX.utils.book_append_sheet(wb,ws,'السجل الكامل');
-  XLSX.writeFile(wb,'سجل_العاملين_كل_المواسم.xlsx');toast('✅ تم تصدير Excel');
-}
 
 function oMd(k){document.getElementById('m-'+k).style.display='flex';const m=document.getElementById('msg-'+k);if(m)m.innerHTML='';}
 function cMd(k){document.getElementById('m-'+k).style.display='none';}
@@ -1266,7 +1386,23 @@ function saveDept(){
   else{if(DEPTS.find(function(x){return x.k===k;})){document.getElementById('msg-dept').innerHTML='<div class="msgtxt mer">القسم موجود</div>';return;}var c=CLRS[DEPTS.length%CLRS.length];DEPTS.push({k:k,l:l,bg:c.bg,tc:c.tc});}
   refreshDM();cMd('dept');rDeptMgr();if(cView==='stf')rStf();sched();logAction(eDK?'تعديل قسم':'إضافة قسم',k+' ('+l+')');toast('تم حفظ القسم');
 }
-function delDeptConfirm(k){var d=DEPTS.find(function(x){return x.k===k;});if(!d||!confirm('حذف قسم '+d.l+'؟'))return;DEPTS=DEPTS.filter(function(x){return x.k!==k;});refreshDM();rDeptMgr();if(cView==='stf')rStf();sched();logAction('حذف قسم',d.l);toast('تم حذف القسم');}
+function delDeptConfirm(k){
+  var d=DEPTS.find(function(x){return x.k===k;});
+  if(!d)return;
+  var deptStaff=staff.filter(function(p){return p.dept===k;});
+  if(deptStaff.length>0){
+    alert('⚠️ لا يمكن حذف قسم "'+d.l+'"\n\nيوجد '+deptStaff.length+' موظف في هذا القسم.\n\nالرجاء نقلهم أولاً إلى أقسام أخرى من تبويب "العاملون"، ثم احذف القسم.');
+    return;
+  }
+  if(!confirm('حذف قسم "'+d.l+'"؟'))return;
+  DEPTS=DEPTS.filter(function(x){return x.k!==k;});
+  refreshDM();rDeptMgr();
+  if(cView==='stf')rStf();
+  rebuildAll();
+  sched();
+  logAction('حذف قسم',d.l);
+  toast('تم حذف القسم');
+}
 function delDept(){if(eDK)delDeptConfirm(eDK);cMd('dept');}
 
 function exportBackup(){
@@ -1295,7 +1431,7 @@ function importBackup(){
   inp.type='file';inp.accept='.json';
   inp.onchange=function(e){
     var f=e.target.files[0];if(!f)return;
-    if(!confirm('سيتم استبدال كل البيانات الحالية بالبيانات من الملف. هل أنت متأكدة؟'))return;
+    if(!confirm('سيتم استبدال كل البيانات الحالية بالبيانات من الملف. هل هل أنت متأكد؟'))return;
     var r=new FileReader();
     r.onload=function(ev){
       try{
@@ -1442,7 +1578,7 @@ async function changePwd(){
   if(currentUser.password_hash!==hashPwd(oldP)){alert('كلمة السر الحالية غير صحيحة');return;}
   var newP=prompt('كلمة السر الجديدة (4 أحرف على الأقل):');
   if(!newP||newP.length<4){alert('قصيرة جداً');return;}
-  var newP2=prompt('أكدي كلمة السر الجديدة:');
+  var newP2=prompt('أكد كلمة السر الجديدة:');
   if(newP!==newP2){alert('غير متطابقتين');return;}
   // Update in DB
   try{
@@ -1507,7 +1643,7 @@ async function doLogin(){
   var u=document.getElementById('login-user').value.trim().toLowerCase();
   var p=document.getElementById('login-pass').value;
   if(!u||!p){
-    document.getElementById('login-msg').innerHTML='<div style="background:#FEE;color:#A32020;padding:8px;border-radius:8px;font-size:13px">أدخلي اسم المستخدم وكلمة السر</div>';
+    document.getElementById('login-msg').innerHTML='<div style="background:#FEE;color:#A32020;padding:8px;border-radius:8px;font-size:13px">أدخل اسم المستخدم وكلمة السر</div>';
     return;
   }
   document.getElementById('login-msg').innerHTML='<div style="background:#FFF8E1;color:#7B4F00;padding:8px;border-radius:8px;font-size:13px">جاري التحقق...</div>';
@@ -1534,7 +1670,7 @@ async function setupAdmin(){
   if(u.length<2){alert('قصير جداً');return;}
   var p=prompt('كلمة السر للأدمن (4 أحرف على الأقل):');
   if(!p||p.length<4){alert('كلمة السر قصيرة');return;}
-  var p2=prompt('أكدي كلمة السر:');
+  var p2=prompt('أكد كلمة السر:');
   if(p!==p2){alert('كلمتا السر غير متطابقتان');return;}
   var admin={username:u,role:'admin',password_hash:hashPwd(p)};
   if(await saveUserDB(admin)){
@@ -1544,7 +1680,7 @@ async function setupAdmin(){
     localStorage.setItem('qsl_pwd',hashPwd(p));
     hideLogin();
     updateUserUI();
-    alert('✅ تم إنشاء الأدمن: '+u+'\nاحفظي كلمة السر جيداً!');
+    alert('✅ تم إنشاء الأدمن: '+u+'\nاحفظ كلمة السر جيداً!');
     if(typeof rebuildAll==='function')rebuildAll();
   }else{
     alert('فشل — تحققي من Supabase');
