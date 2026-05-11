@@ -182,7 +182,7 @@ button,select,input{font-family:'Cairo',sans-serif}
 </head>
 <body>
 
-<div id="login-overlay" style="display:none;position:fixed;inset:0;background:linear-gradient(135deg,#6B0F2A 0%,#8B1A37 100%);z-index:99999;justify-content:center;align-items:center;font-family:'Cairo',sans-serif">
+<div id="login-overlay" style="display:flex;position:fixed;inset:0;background:linear-gradient(135deg,#6B0F2A 0%,#8B1A37 100%);z-index:99999;justify-content:center;align-items:center;font-family:'Cairo',sans-serif">
   <div style="background:#fff;border-radius:18px;padding:40px;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,.3);direction:rtl;margin:20px">
     <div style="text-align:center;margin-bottom:24px">
       <div style="font-size:48px;margin-bottom:8px">⚽</div>
@@ -1806,7 +1806,21 @@ async function delUser(u){
   }
 }
 
-(async()=>{const ok=await cloudLoad();rebuildAll();if(!ok)await cloudSave();else toast('✅ تم التحميل من السحابة');})();
+(async()=>{
+  // Step 1: Quick auth check (synchronous) - show login if no saved credentials
+  var savedUser=localStorage.getItem('qsl_user');
+  var savedPwd=localStorage.getItem('qsl_pwd');
+  if(!savedUser||!savedPwd){
+    // No saved credentials - show login immediately
+    document.getElementById('login-overlay').style.display='flex';
+  }
+  
+  // Step 2: Now load data and verify auth
+  await checkAuth();
+  const ok=await cloudLoad();
+  rebuildAll();
+  if(!ok)await cloudSave();
+})();
 </script>
 </body>
 </html>
